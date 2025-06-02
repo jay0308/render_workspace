@@ -1,0 +1,2 @@
+export const COUNTERSTRIKERS_TEAM_ID = 1707850;
+export const ADMIN_PROFILE_ID = 1460919;

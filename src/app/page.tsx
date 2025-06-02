@@ -1,102 +1,144 @@
-import Image from "next/image";
+"use client";
+import React, { useState, useEffect } from "react";
+import MatchSummaryCard from "../components/MatchSummaryCard";
+import AddMatchModal from "@/components/AddMatchModal";
+import { ADMIN_PROFILE_ID } from "@/utils/constants";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [showModal, setShowModal] = useState(false);
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [matches, setMatches] = useState<any[]>([]);
+  const [fetching, setFetching] = useState(true);
+  const [fetchError, setFetchError] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+  const router = useRouter();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+  useEffect(() => {
+    // Check for profile ID in localStorage
+    const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
+    if (!profileId) {
+      router.replace("/login");
+      return;
+    }
+    setIsAdmin(profileId === String(ADMIN_PROFILE_ID));
+  }, [router]);
+
+  useEffect(() => {
+    const fetchMatches = async () => {
+      setFetching(true);
+      setFetchError("");
+      try {
+        const res = await fetch("/api/get-matches");
+        const data = await res.json();
+        if (Array.isArray(data.matches)) {
+          setMatches(data.matches);
+        } else {
+          setMatches([]);
+        }
+      } catch (err: any) {
+        setFetchError("Failed to fetch matches");
+        setMatches([]);
+      } finally {
+        setFetching(false);
+      }
+    };
+    fetchMatches();
+  }, []);
+
+  const handleOpen = () => {
+    setShowModal(true);
+    setUrl("");
+    setError("");
+  };
+  const handleClose = () => setShowModal(false);
+
+  const handleSubmit = async (nextData: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const res = await fetch("/api/add-match-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchDataJSONString: nextData }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Failed to add match summary");
+      }
+      setShowModal(false);
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+    } finally {
+      setLoading(false);
+      window.location.reload();
+    }
+  };
+
+  return (
+    <div className="flex flex-col min-h-screen bg-white">
+      {/* Header */}
+      <header className="w-full py-4 px-6 bg-gray-900 border-b border-gray-800 flex items-center justify-between relative">
+        <h1 className="text-lg font-semibold text-gray-100">
+          Counterstrikers MVP's
+        </h1>
+        <button
+          className="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-700 hover:bg-gray-800 text-white font-medium px-4 py-2 rounded shadow-sm transition-colors text-sm"
+          onClick={() => {
+            localStorage.removeItem("cricheroes_profile_id");
+            router.replace("/login");
+          }}
+        >
+          Logout
+        </button>
+      </header>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col items-center px-4 pt-8 pb-8">
+        {fetching ? (
+          <div className="text-gray-500 text-lg py-8">Loading...</div>
+        ) : fetchError ? (
+          <div className="text-red-500 text-lg py-8">{fetchError}</div>
+        ) : matches.length === 0 ? (
+          <div className="text-gray-500 text-lg py-8">No match found</div>
+        ) : (
+          <MatchSummaryCard
+            {...matches[matches.length - 1].matchSummary}
+            matchSummary={matches[matches.length - 1].matchSummary.matchSummary}
+            matchResult={matches[matches.length - 1].matchSummary.matchResult}
+            teamA={matches[matches.length - 1].matchSummary.teamA}
+            teamB={matches[matches.length - 1].matchSummary.teamB}
+          />
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
+
+      {/* Floating Add Match Button */}
+      {isAdmin && (
+        <button
+          className="fixed bottom-20 right-6 z-50 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
+          onClick={handleOpen}
+          title="Add Match"
         >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+          +
+        </button>
+      )}
+
+      <AddMatchModal
+        open={showModal}
+        url={url}
+        error={error}
+        onClose={handleClose}
+        onChange={setUrl}
+        onSubmit={handleSubmit}
+        setError={setError}
+        loading={loading}
+      />
+
+      {/* Footer */}
+      <footer className="w-full py-3 px-6 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
+        &copy; {new Date().getFullYear()} Counterstrikers MVP's
       </footer>
     </div>
   );
