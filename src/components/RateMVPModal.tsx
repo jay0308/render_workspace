@@ -7,6 +7,7 @@ interface RateMVPModalProps {
   onClose: () => void;
   player: MVPPlayer | null;
   onSubmit: (ratings: Record<string, number>) => void;
+  prefillRatings?: Record<string, number>;
 }
 
 const StarRating: React.FC<{
@@ -24,7 +25,7 @@ const StarRating: React.FC<{
             ? "text-yellow-400"
             : "text-gray-300"
         }
-        onClick={() => onChange(star)}
+        onClick={() => onChange(star === value ? 0 : star)}
         aria-label={`Rate ${star}`}
       >
         <svg
@@ -40,7 +41,7 @@ const StarRating: React.FC<{
   </div>
 );
 
-const RateMVPModal: React.FC<RateMVPModalProps> = ({ open, onClose, player, onSubmit }) => {
+const RateMVPModal: React.FC<RateMVPModalProps> = ({ open, onClose, player, onSubmit, prefillRatings }) => {
   const [ratings, setRatings] = useState<Record<string, number>>({});
   const [showDesc, setShowDesc] = useState<string | null>(null);
 
@@ -48,8 +49,10 @@ const RateMVPModal: React.FC<RateMVPModalProps> = ({ open, onClose, player, onSu
     if (!open || !player) {
       setRatings({});
       setShowDesc(null);
+    } else if (open && prefillRatings) {
+      setRatings(prefillRatings);
     }
-  }, [open, player]);
+  }, [open, player, prefillRatings]);
 
   if (!open || !player) return null;
 

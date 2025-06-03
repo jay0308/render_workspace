@@ -5,8 +5,9 @@ import AddMatchModal from "@/components/AddMatchModal";
 import { ADMIN_PROFILE_ID } from "@/utils/constants";
 import { useRouter } from "next/navigation";
 import ShowMVPsModal from "../components/ShowMVPsModal";
-import { get } from "@/utils/request";
+import { get, post } from "@/utils/request";
 import RateMVPModal from "../components/RateMVPModal";
+import AwardAnimationModal from "../components/AwardAnimationModal";
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -23,6 +24,8 @@ export default function Home() {
   const [ratePlayer, setRatePlayer] = useState<any>(null);
   const [bestPlayerPerMatch, setBestPlayerPerMatch] = useState<any[]>([]);
   const [bestOverallPlayer, setBestOverallPlayer] = useState<any>(null);
+  const [ratePrefill, setRatePrefill] = useState<Record<string, number> | undefined>(undefined);
+  const [showAwardModal, setShowAwardModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -74,15 +77,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/add-match-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchDataJSONString: nextData }),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "Failed to add match summary");
-      }
+      await post("/api/add-match-summary", { matchDataJSONString: nextData });
       setShowModal(false);
     } catch (err: any) {
       setError(err.message || "Something went wrong");
@@ -107,12 +102,12 @@ export default function Home() {
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Header */}
-      <header className="w-full py-4 px-6 bg-gray-900 border-b border-gray-800 flex items-center justify-between relative">
+      <header className="w-full py-4 px-6 bg-gray-900 border-b border-gray-800 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-100">
           Counterstrikers MVP's
         </h1>
         <button
-          className="absolute right-0 top-1/2 -translate-y-1/2 bg-gray-700 hover:bg-gray-800 text-white font-medium px-4 py-2 rounded shadow-sm transition-colors text-sm"
+          className="bg-gray-700 hover:bg-gray-800 text-white font-medium px-4 py-2 rounded shadow-sm transition-colors text-sm"
           onClick={() => {
             localStorage.removeItem("cricheroes_profile_id");
             router.replace("/login");
@@ -142,8 +137,12 @@ export default function Home() {
                 className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
                 onClick={async () => {
                   if (window.confirm("Are you sure you want to award and clear all match data?")) {
-                    await fetch("/api/clear-matches", { method: "POST" });
-                    window.location.reload();
+                    try {
+                      await post("/api/clear-matches", {});
+                      setShowAwardModal(true);
+                    } catch (err: any) {
+                      alert(err.message || "Failed to award player");
+                    }
                   }
                 }}
               >
@@ -201,8 +200,9 @@ export default function Home() {
         onClose={() => { setShowMVPsModal(false); window.location.reload() }}
         mvpList={selectedMVPs}
         selfProfileId={profileId || undefined}
-        onRate={player => {
+        onRate={(player: any, lastRatings: Record<string, number> | undefined) => {
           setRatePlayer(player);
+          setRatePrefill(lastRatings);
           setRateModalOpen(true);
         }}
       />
@@ -211,29 +211,27 @@ export default function Home() {
         open={rateModalOpen}
         onClose={() => setRateModalOpen(false)}
         player={ratePlayer}
+        prefillRatings={ratePrefill}
         onSubmit={async ratings => {
           setRateModalOpen(false);
           if (!ratePlayer || matches.length === 0) return;
           const matchId = matches[matches.length - 1].matchId;
           try {
-            const res = await fetch("/api/submit-rating", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "x-player-id": String(ratePlayer.player_id),
-              },
-              body: JSON.stringify({ ratings, matchId }),
-            });
-            if (!res.ok) {
-              const err = await res.json();
-              alert(err.error || "Failed to submit rating");
-            } else {
-              alert("Rating submitted successfully!");
-            }
-          } catch (e) {
-            alert("Failed to submit rating");
+            await post("/api/submit-rating", { ratings, matchId, playerId: ratePlayer.player_id });
+            alert("Rating submitted successfully!");
+          } catch (err: any) {
+            alert(err.message || "Failed to submit rating");
           }
         }}
+      />
+
+      <AwardAnimationModal
+        open={showAwardModal}
+        onClose={() => {
+          setShowAwardModal(false);
+          window.location.reload();
+        }}
+        playerName={bestOverallPlayer?.name || ""}
       />
 
       {/* Footer */}

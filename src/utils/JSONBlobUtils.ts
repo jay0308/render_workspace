@@ -11,12 +11,28 @@ export async function getJSONBlob() {
 }
 
 export async function updateJSONBlob(data: any) {
+  console.log("Updating JSONBlob with data:", JSON.stringify(data));
   const res = await fetch(getJSONBlobUrl(), {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error(`Failed to update JSONBlob: ${res.status}`);
-  return res.json();
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error("JSONBlob update failed:", {
+      status: res.status,
+      statusText: res.statusText,
+      error: errorText
+    });
+    throw new Error(`Failed to update JSONBlob: ${res.status} - ${errorText}`);
+  }
+  
+  const response = await res.json();
+  console.log("JSONBlob update response:", JSON.stringify(response));
+  return response;
 }
 

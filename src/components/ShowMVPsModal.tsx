@@ -6,6 +6,7 @@ export interface MVPPlayer {
   profile_photo: string;
   total: string;
   avg_enrich_mvp?: number;
+  ratings?: any[];
 }
 
 interface ShowMVPsModalProps {
@@ -13,7 +14,7 @@ interface ShowMVPsModalProps {
   onClose: () => void;
   mvpList: MVPPlayer[];
   selfProfileId?: string;
-  onRate?: (player: MVPPlayer) => void;
+  onRate?: (player: MVPPlayer, lastRatings?: Record<string, number>) => void;
 }
 
 const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, selfProfileId, onRate }) => {
@@ -40,27 +41,42 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
         </div>
         <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
-          {sortedMVPs.map((player) => (
-            <div key={player.player_id} className="flex items-center gap-4 p-2 rounded hover:bg-gray-50">
-              <img
-                src={player.profile_photo}
-                alt={player.name}
-                className="w-12 h-12 rounded-full object-cover border border-gray-200"
-              />
-              <div className="flex-1">
-                <div className="font-semibold text-gray-800">{player.name}</div>
-                <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-teal-700">{player.avg_enrich_mvp?.toFixed(4) ?? "-"}</span></div>
+          {sortedMVPs.map((player) => {
+            let alreadyRated = false;
+            let lastRatings: Record<string, number> | undefined = undefined;
+            if (selfProfileId && Array.isArray(player.ratings)) {
+              const found = player.ratings.find((r: any) => String(r.raterId) === String(selfProfileId));
+              if (found && typeof found.ratings === 'object') {
+                alreadyRated = true;
+                lastRatings = found.ratings;
+              }
+            }
+            return (
+              <div key={player.player_id} className="flex items-center gap-4 p-2 rounded hover:bg-gray-50">
+                <img
+                  src={player.profile_photo}
+                  alt={player.name}
+                  className="w-12 h-12 rounded-full object-cover border border-gray-200"
+                />
+                <div className="flex-1">
+                  <div className="font-semibold text-gray-800">{player.name}</div>
+                  <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-teal-700">{player.avg_enrich_mvp?.toFixed(4) ?? "-"}</span></div>
+                </div>
+                {selfProfileId && String(player.player_id) !== selfProfileId && onRate && (
+                  <button
+                    className={`ml-2 px-3 py-1 rounded text-white text-xs font-semibold ${
+                      alreadyRated 
+                        ? "bg-orange-500 hover:bg-orange-600" 
+                        : "bg-teal-600 hover:bg-teal-700"
+                    }`}
+                    onClick={() => onRate(player, lastRatings)}
+                  >
+                    {alreadyRated ? "Rate Again" : "Rate Now"}
+                  </button>
+                )}
               </div>
-              {selfProfileId && String(player.player_id) !== selfProfileId && onRate && (
-                <button
-                  className="ml-2 px-3 py-1 rounded bg-teal-600 text-white hover:bg-teal-700 text-xs font-semibold"
-                  onClick={() => onRate(player)}
-                >
-                  Rate Now
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
