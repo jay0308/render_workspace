@@ -25,6 +25,7 @@ export default function Home() {
   const [bestPlayerPerMatch, setBestPlayerPerMatch] = useState<any[]>([]);
   const [bestOverallPlayer, setBestOverallPlayer] = useState<any>(null);
   const [ratePrefill, setRatePrefill] = useState<Record<string, number> | undefined>(undefined);
+  const [rateCommentPrefill, setRateCommentPrefill] = useState<string | undefined>(undefined);
   const [showAwardModal, setShowAwardModal] = useState(false);
   const router = useRouter();
 
@@ -200,9 +201,10 @@ export default function Home() {
         onClose={() => { setShowMVPsModal(false); window.location.reload() }}
         mvpList={selectedMVPs}
         selfProfileId={profileId || undefined}
-        onRate={(player: any, lastRatings: Record<string, number> | undefined) => {
+        onRate={(player: any, lastRatings: Record<string, number> | undefined, lastComment: string | undefined) => {
           setRatePlayer(player);
           setRatePrefill(lastRatings);
+          setRateCommentPrefill(lastComment);
           setRateModalOpen(true);
         }}
       />
@@ -212,12 +214,13 @@ export default function Home() {
         onClose={() => setRateModalOpen(false)}
         player={ratePlayer}
         prefillRatings={ratePrefill}
-        onSubmit={async ratings => {
+        prefillComment={rateCommentPrefill}
+        onSubmit={async ({ ratings, comment }) => {
           setRateModalOpen(false);
           if (!ratePlayer || matches.length === 0) return;
           const matchId = matches[matches.length - 1].matchId;
           try {
-            await post("/api/submit-rating", { ratings, matchId, playerId: ratePlayer.player_id });
+            await post("/api/submit-rating", { ratings, matchId, playerId: ratePlayer.player_id, comment });
             alert("Rating submitted successfully!");
           } catch (err: any) {
             alert(err.message || "Failed to submit rating");

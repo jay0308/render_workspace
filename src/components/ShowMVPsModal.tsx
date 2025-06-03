@@ -14,7 +14,7 @@ interface ShowMVPsModalProps {
   onClose: () => void;
   mvpList: MVPPlayer[];
   selfProfileId?: string;
-  onRate?: (player: MVPPlayer, lastRatings?: Record<string, number>) => void;
+  onRate?: (player: MVPPlayer, lastRatings?: Record<string, number>, lastComment?: string) => void;
 }
 
 const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, selfProfileId, onRate }) => {
@@ -44,11 +44,17 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
           {sortedMVPs.map((player) => {
             let alreadyRated = false;
             let lastRatings: Record<string, number> | undefined = undefined;
+            let lastComment: string | undefined = undefined;
             if (selfProfileId && Array.isArray(player.ratings)) {
               const found = player.ratings.find((r: any) => String(r.raterId) === String(selfProfileId));
-              if (found && typeof found.ratings === 'object') {
+              if (found) {
                 alreadyRated = true;
-                lastRatings = found.ratings;
+                if (typeof found.ratings === 'object') {
+                  lastRatings = found.ratings;
+                }
+                if (typeof found.comment === 'string') {
+                  lastComment = found.comment;
+                }
               }
             }
             return (
@@ -69,7 +75,7 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
                         ? "bg-orange-500 hover:bg-orange-600" 
                         : "bg-teal-600 hover:bg-teal-700"
                     }`}
-                    onClick={() => onRate(player, lastRatings)}
+                    onClick={() => onRate(player, lastRatings, lastComment)}
                   >
                     {alreadyRated ? "Rate Again" : "Rate Now"}
                   </button>

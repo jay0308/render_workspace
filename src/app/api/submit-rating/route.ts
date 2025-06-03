@@ -5,7 +5,7 @@ import { ContextualFactors } from "@/utils/constants";
 export async function POST(req: NextRequest) {
   try {
     const raterId = req.headers.get("x-profile-id");
-    const { ratings, matchId, playerId } = await req.json();
+    const { ratings, matchId, playerId, comment } = await req.json();
 
     // Validate
     if (!matchId || !raterId || !playerId) {
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
     // Create new rating object
     const newRating = {
       ratings: allRatings,
+      comment: comment || "",
       submittedAt: new Date().toISOString(),
       raterId: raterId,
     };

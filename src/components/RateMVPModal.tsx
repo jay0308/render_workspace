@@ -6,8 +6,9 @@ interface RateMVPModalProps {
   open: boolean;
   onClose: () => void;
   player: MVPPlayer | null;
-  onSubmit: (ratings: Record<string, number>) => void;
+  onSubmit: (data: { ratings: Record<string, number>; comment: string }) => void;
   prefillRatings?: Record<string, number>;
+  prefillComment?: string;
 }
 
 const StarRating: React.FC<{
@@ -41,18 +42,32 @@ const StarRating: React.FC<{
   </div>
 );
 
-const RateMVPModal: React.FC<RateMVPModalProps> = ({ open, onClose, player, onSubmit, prefillRatings }) => {
+const RateMVPModal: React.FC<RateMVPModalProps> = ({ 
+  open, 
+  onClose, 
+  player, 
+  onSubmit, 
+  prefillRatings,
+  prefillComment 
+}) => {
   const [ratings, setRatings] = useState<Record<string, number>>({});
+  const [comment, setComment] = useState("");
   const [showDesc, setShowDesc] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open || !player) {
       setRatings({});
+      setComment("");
       setShowDesc(null);
-    } else if (open && prefillRatings) {
-      setRatings(prefillRatings);
+    } else if (open) {
+      if (prefillRatings) {
+        setRatings(prefillRatings);
+      }
+      if (prefillComment !== undefined) {
+        setComment(prefillComment);
+      }
     }
-  }, [open, player, prefillRatings]);
+  }, [open, player, prefillRatings, prefillComment]);
 
   if (!open || !player) return null;
 
@@ -62,8 +77,9 @@ const RateMVPModal: React.FC<RateMVPModalProps> = ({ open, onClose, player, onSu
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(ratings);
+    onSubmit({ ratings, comment });
     setRatings({});
+    setComment("");
     setShowDesc(null);
   };
 
@@ -114,6 +130,19 @@ const RateMVPModal: React.FC<RateMVPModalProps> = ({ open, onClose, player, onSu
               />
             </div>
           ))}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="comment" className="font-medium text-gray-700">
+              Comments (Optional)
+            </label>
+            <textarea
+              id="comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Add your comments about the player's performance..."
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none text-gray-800 placeholder-gray-400"
+              rows={3}
+            />
+          </div>
           <button
             type="submit"
             className="mt-2 py-2 rounded bg-teal-600 text-white hover:bg-teal-700 font-semibold disabled:opacity-60 disabled:cursor-not-allowed"
