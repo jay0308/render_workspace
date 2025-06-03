@@ -6,6 +6,12 @@ type Team = {
   innings: { overs_played: string }[];
 };
 
+type BestPlayer = {
+  name: string;
+  profile_photo: string;
+  enrich_mvp: number;
+};
+
 type MatchSummaryCardProps = {
   groundName: string;
   cityName: string;
@@ -17,6 +23,8 @@ type MatchSummaryCardProps = {
   teamB: Team;
   matchSummary: string;
   matchResult: string;
+  onShowMVPs?: () => void;
+  bestPlayer?: BestPlayer;
 };
 
 const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
@@ -30,6 +38,8 @@ const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
   teamB,
   matchSummary,
   matchResult,
+  onShowMVPs,
+  bestPlayer,
 }) => {
   return (
     <div className="w-full max-w-xl bg-white rounded-lg shadow-md p-4 sm:p-6 mt-0">
@@ -58,6 +68,26 @@ const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
           <span className="text-xs text-gray-900 bg-red-400 rounded-full px-2 py-0.5 w-fit">PAST</span>
         )}
       </div>
+
+      {bestPlayer && (
+        <div className="flex items-center gap-3 mt-4 p-3 bg-gray-50 rounded shadow-sm">
+          <img src={bestPlayer.profile_photo} alt={bestPlayer.name} className="w-10 h-10 rounded-full object-cover border border-gray-200" />
+          <div>
+            <div className="font-semibold text-teal-700 text-sm">Best Player of the Match</div>
+            <div className="font-bold text-gray-800">{bestPlayer.name}</div>
+            <div className="text-xs text-gray-500">Enrich MVP: <span className="font-bold text-teal-700">{bestPlayer.enrich_mvp.toFixed(4)}</span></div>
+          </div>
+        </div>
+      )}
+
+      {onShowMVPs && (
+        <button
+          className="mt-6 w-full py-2 rounded bg-teal-600 text-white hover:bg-teal-700 font-semibold text-base shadow"
+          onClick={onShowMVPs}
+        >
+          Show MVP's
+        </button>
+      )}
     </div>
   );
 };

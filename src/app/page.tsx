@@ -4,6 +4,9 @@ import MatchSummaryCard from "../components/MatchSummaryCard";
 import AddMatchModal from "@/components/AddMatchModal";
 import { ADMIN_PROFILE_ID } from "@/utils/constants";
 import { useRouter } from "next/navigation";
+import ShowMVPsModal from "../components/ShowMVPsModal";
+import { get } from "@/utils/request";
+import RateMVPModal from "../components/RateMVPModal";
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -14,6 +17,12 @@ export default function Home() {
   const [fetching, setFetching] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showMVPsModal, setShowMVPsModal] = useState(false);
+  const [selectedMVPs, setSelectedMVPs] = useState<any[]>([]);
+  const [rateModalOpen, setRateModalOpen] = useState(false);
+  const [ratePlayer, setRatePlayer] = useState<any>(null);
+  const [bestPlayerPerMatch, setBestPlayerPerMatch] = useState<any[]>([]);
+  const [bestOverallPlayer, setBestOverallPlayer] = useState<any>(null);
   const router = useRouter();
 
   useEffect(() => {
@@ -31,21 +40,27 @@ export default function Home() {
       setFetching(true);
       setFetchError("");
       try {
-        const res = await fetch("/api/get-matches");
-        const data = await res.json();
+        const data = await get<{ matches: any[]; bestPlayerPerMatch: any[]; bestOverallPlayer: any }>("/api/get-matches");
         if (Array.isArray(data.matches)) {
           setMatches(data.matches);
         } else {
           setMatches([]);
         }
-      } catch (err: any) {
+        setBestPlayerPerMatch(Array.isArray(data.bestPlayerPerMatch) ? data.bestPlayerPerMatch : []);
+        setBestOverallPlayer(data.bestOverallPlayer || null);
+      } catch (err) {
         setFetchError("Failed to fetch matches");
         setMatches([]);
+        setBestPlayerPerMatch([]);
+        setBestOverallPlayer(null);
       } finally {
         setFetching(false);
       }
     };
-    fetchMatches();
+    const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
+    if (profileId) {
+      fetchMatches();
+    }
   }, []);
 
   const handleOpen = () => {
@@ -77,6 +92,18 @@ export default function Home() {
     }
   };
 
+  const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
+
+  // Helper to get month name from last match
+  const getLastMatchMonth = () => {
+    if (!matches.length) return "";
+    const lastMatch = matches[matches.length - 1];
+    const dateStr = lastMatch?.matchSummary?.startDateTime;
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    return date.toLocaleString("default", { month: "long", year: "numeric" });
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Header */}
@@ -97,6 +124,34 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center px-4 pt-8 pb-8">
+        {bestOverallPlayer && (
+          <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col sm:flex-row items-center gap-4 shadow">
+            <div className="flex flex-row gap-2 w-full items-center">
+              <img src={bestOverallPlayer.profile_photo} alt={bestOverallPlayer.name} className="w-12 h-12 rounded-full object-cover border border-yellow-300" />
+              <div className="font-bold text-gray-800">{bestOverallPlayer.name}</div>
+            </div>
+
+            <div className="flex-1">
+              <div className="font-semibold text-yellow-700 text-sm">
+                Best Overall Performer of Month {getLastMatchMonth()}
+              </div>
+              <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-yellow-700">{bestOverallPlayer.avg_enrich_mvp?.toFixed(4)}</span></div>
+            </div>
+            <div className="w-full flex justify-end">
+              <button
+                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to award and clear all match data?")) {
+                    await fetch("/api/clear-matches", { method: "POST" });
+                    window.location.reload();
+                  }
+                }}
+              >
+                Award Now
+              </button>
+            </div>
+          </div>
+        )}
         {fetching ? (
           <div className="text-gray-500 text-lg py-8">Loading...</div>
         ) : fetchError ? (
@@ -110,6 +165,11 @@ export default function Home() {
             matchResult={matches[matches.length - 1].matchSummary.matchResult}
             teamA={matches[matches.length - 1].matchSummary.teamA}
             teamB={matches[matches.length - 1].matchSummary.teamB}
+            onShowMVPs={() => {
+              setSelectedMVPs(matches[matches.length - 1].counterstrikersMVPs || []);
+              setShowMVPsModal(true);
+            }}
+            bestPlayer={bestPlayerPerMatch.length > 0 ? bestPlayerPerMatch[bestPlayerPerMatch.length - 1]?.player : undefined}
           />
         )}
       </main>
@@ -134,6 +194,46 @@ export default function Home() {
         onSubmit={handleSubmit}
         setError={setError}
         loading={loading}
+      />
+
+      <ShowMVPsModal
+        open={showMVPsModal}
+        onClose={() => { setShowMVPsModal(false); window.location.reload() }}
+        mvpList={selectedMVPs}
+        selfProfileId={profileId || undefined}
+        onRate={player => {
+          setRatePlayer(player);
+          setRateModalOpen(true);
+        }}
+      />
+
+      <RateMVPModal
+        open={rateModalOpen}
+        onClose={() => setRateModalOpen(false)}
+        player={ratePlayer}
+        onSubmit={async ratings => {
+          setRateModalOpen(false);
+          if (!ratePlayer || matches.length === 0) return;
+          const matchId = matches[matches.length - 1].matchId;
+          try {
+            const res = await fetch("/api/submit-rating", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-player-id": String(ratePlayer.player_id),
+              },
+              body: JSON.stringify({ ratings, matchId }),
+            });
+            if (!res.ok) {
+              const err = await res.json();
+              alert(err.error || "Failed to submit rating");
+            } else {
+              alert("Rating submitted successfully!");
+            }
+          } catch (e) {
+            alert("Failed to submit rating");
+          }
+        }}
       />
 
       {/* Footer */}

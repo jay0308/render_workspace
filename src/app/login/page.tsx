@@ -20,7 +20,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4">
       <div className="bg-white rounded-lg shadow-md p-8 w-full max-w-sm">
-        <h1 className="text-2xl font-bold mb-4 text-center">Login</h1>
+        <h1 className="text-2xl font-bold mb-4 text-center text-gray-900">Login</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="text-sm font-medium text-gray-700">Cricheroes Profile ID</label>
           <input
