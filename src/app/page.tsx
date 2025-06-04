@@ -134,21 +134,23 @@ export default function Home() {
               <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-yellow-700">{bestOverallPlayer.avg_enrich_mvp?.toFixed(4)}</span></div>
             </div>
             <div className="w-full flex justify-end">
-              <button
-                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
-                onClick={async () => {
-                  if (window.confirm("Are you sure you want to award and clear all match data?")) {
-                    try {
-                      await post("/api/clear-matches", {});
-                      setShowAwardModal(true);
-                    } catch (err: any) {
-                      alert(err.message || "Failed to award player");
+              {profileId !== String(bestOverallPlayer?.player_id) && (
+                <button
+                  className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
+                  onClick={async () => {
+                    if (window.confirm("Are you sure you want to award and clear all match data?")) {
+                      try {
+                        // await post("/api/clear-matches", {});
+                        setShowAwardModal(true);
+                      } catch (err: any) {
+                        alert(err.message || "Failed to award player");
+                      }
                     }
-                  }
-                }}
-              >
-                Award Now
-              </button>
+                  }}
+                >
+                  Award Now
+                </button>
+              )}
             </div>
           </div>
         )}

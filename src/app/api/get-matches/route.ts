@@ -26,14 +26,7 @@ export async function GET(req: NextRequest) {
   try {
     const blobData = await getJSONBlob();
     const matches = Array.isArray(blobData.matches) ? blobData.matches : [];
-    const profileId = req.headers.get("x-profile-id");
-    let filteredMatches = matches;
-    if (profileId) {
-      filteredMatches = matches.filter((match: any) =>
-        Array.isArray(match.counterstrikersMVPs) &&
-        match.counterstrikersMVPs.some((mvp: any) => String(mvp.player_id) === String(profileId))
-      );
-    }
+    const filteredMatches = matches;
 
     // 1. Calculate enrich_mvp for each MVP in each match
     for (const match of filteredMatches) {

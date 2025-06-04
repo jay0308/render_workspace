@@ -45,6 +45,8 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
             let alreadyRated = false;
             let lastRatings: Record<string, number> | undefined = undefined;
             let lastComment: string | undefined = undefined;
+            let isSelfMVP = false;
+            let isUserMVP = false;
             if (selfProfileId && Array.isArray(player.ratings)) {
               const found = player.ratings.find((r: any) => String(r.raterId) === String(selfProfileId));
               if (found) {
@@ -57,6 +59,11 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
                 }
               }
             }
+            // Check if the logged-in user is an MVP in this match
+            if (selfProfileId && Array.isArray(mvpList)) {
+              isUserMVP = mvpList.some((mvp) => String(mvp.player_id) === String(selfProfileId));
+            }
+            isSelfMVP = String(player.player_id) === String(selfProfileId);
             return (
               <div key={player.player_id} className="flex items-center gap-4 p-2 rounded hover:bg-gray-50">
                 <img
@@ -68,7 +75,7 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
                   <div className="font-semibold text-gray-800">{player.name}</div>
                   <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-teal-700">{player.avg_enrich_mvp?.toFixed(4) ?? "-"}</span></div>
                 </div>
-                {selfProfileId && String(player.player_id) !== selfProfileId && onRate && (
+                {isUserMVP && !isSelfMVP && onRate && (
                   <button
                     className={`ml-2 px-3 py-1 rounded text-white text-xs font-semibold ${
                       alreadyRated 
