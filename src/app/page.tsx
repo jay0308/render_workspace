@@ -140,7 +140,7 @@ export default function Home() {
                   onClick={async () => {
                     if (window.confirm("Are you sure you want to award and clear all match data?")) {
                       try {
-                        // await post("/api/clear-matches", {});
+                        await post("/api/clear-matches", {});
                         setShowAwardModal(true);
                       } catch (err: any) {
                         alert(err.message || "Failed to award player");
