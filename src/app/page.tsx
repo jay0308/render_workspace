@@ -20,6 +20,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showMVPsModal, setShowMVPsModal] = useState(false);
   const [selectedMVPs, setSelectedMVPs] = useState<any[]>([]);
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [rateModalOpen, setRateModalOpen] = useState(false);
   const [ratePlayer, setRatePlayer] = useState<any>(null);
   const [bestPlayerPerMatch, setBestPlayerPerMatch] = useState<any[]>([]);
@@ -161,18 +162,29 @@ export default function Home() {
         ) : matches.length === 0 ? (
           <div className="text-gray-500 text-lg py-8">No match found</div>
         ) : (
-          <MatchSummaryCard
-            {...matches[matches.length - 1].matchSummary}
-            matchSummary={matches[matches.length - 1].matchSummary.matchSummary}
-            matchResult={matches[matches.length - 1].matchSummary.matchResult}
-            teamA={matches[matches.length - 1].matchSummary.teamA}
-            teamB={matches[matches.length - 1].matchSummary.teamB}
-            onShowMVPs={() => {
-              setSelectedMVPs(matches[matches.length - 1].counterstrikersMVPs || []);
-              setShowMVPsModal(true);
-            }}
-            bestPlayer={bestPlayerPerMatch.length > 0 ? bestPlayerPerMatch[bestPlayerPerMatch.length - 1]?.player : undefined}
-          />
+          <div className="flex flex-col gap-6 w-full max-w-xl mx-auto">
+            {matches
+              .sort((a, b) => new Date(b.matchSummary.startDateTime).getTime() - new Date(a.matchSummary.startDateTime).getTime())
+              .map((match, index) => {
+                const bestPlayerForThisMatch = bestPlayerPerMatch.find(bp => bp.matchId === match.matchId)?.player;
+                return (
+                  <MatchSummaryCard
+                    key={match.matchId}
+                    {...match.matchSummary}
+                    matchSummary={match.matchSummary.matchSummary}
+                    matchResult={match.matchSummary.matchResult}
+                    teamA={match.matchSummary.teamA}
+                    teamB={match.matchSummary.teamB}
+                    onShowMVPs={() => {
+                      setSelectedMVPs(match.counterstrikersMVPs || []);
+                      setSelectedMatchId(match.matchId);
+                      setShowMVPsModal(true);
+                    }}
+                    bestPlayer={bestPlayerForThisMatch}
+                  />
+                );
+              })}
+          </div>
         )}
       </main>
 
@@ -219,10 +231,9 @@ export default function Home() {
         prefillComment={rateCommentPrefill}
         onSubmit={async ({ ratings, comment }) => {
           setRateModalOpen(false);
-          if (!ratePlayer || matches.length === 0) return;
-          const matchId = matches[matches.length - 1].matchId;
+          if (!ratePlayer || !selectedMatchId) return;
           try {
-            await post("/api/submit-rating", { ratings, matchId, playerId: ratePlayer.player_id, comment });
+            await post("/api/submit-rating", { ratings, matchId: selectedMatchId, playerId: ratePlayer.player_id, comment });
             alert("Rating submitted successfully!");
           } catch (err: any) {
             alert(err.message || "Failed to submit rating");
