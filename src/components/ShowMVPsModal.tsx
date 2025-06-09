@@ -6,6 +6,7 @@ export interface MVPPlayer {
   profile_photo: string;
   total: string;
   avg_enrich_mvp?: number;
+  enrich_mvp?: number;
   ratings?: any[];
   avg_rating?: number;
   bowling?: string;
@@ -24,8 +25,8 @@ interface ShowMVPsModalProps {
 const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, selfProfileId, onRate }) => {
   const [openDetails, setOpenDetails] = useState<Record<number, boolean>>({});
   if (!open) return null;
-  // Sort MVPs by avg_enrich_mvp descending
-  const sortedMVPs = [...mvpList].sort((a, b) => (b.avg_enrich_mvp ?? 0) - (a.avg_enrich_mvp ?? 0));
+  // Sort MVPs by enrich_mvp descending
+  const sortedMVPs = [...mvpList].sort((a, b) => (b.enrich_mvp ?? 0) - (a.enrich_mvp ?? 0));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -117,7 +118,7 @@ const ShowMVPsModal: React.FC<ShowMVPsModalProps> = ({ open, onClose, mvpList, s
                   />
                   <div className="flex-1">
                     <div className="font-semibold text-gray-800">{player.name}</div>
-                    <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-teal-700">{player.avg_enrich_mvp?.toFixed(4) ?? "-"}</span></div>
+                    <div className="text-xs text-gray-500">Enrich MVP: <span className="font-bold text-teal-700">{player.enrich_mvp?.toFixed(4) ?? "-"}</span></div>
                   </div>
                   {isUserMVP && !isSelfMVP && onRate && (
                     <button
