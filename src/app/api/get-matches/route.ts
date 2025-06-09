@@ -64,14 +64,28 @@ export async function GET(req: NextRequest) {
         }
       }
     }
+    
+    // Calculate averages and store them in a lookup map
+    const playerAvgMap: Record<string, number> = {};
     let bestOverallPlayer = null;
     let bestAvg = -Infinity;
-    for (const stat of Object.values(playerStats)) {
+    for (const [playerId, stat] of Object.entries(playerStats)) {
       const avg = stat.count > 0 ? round4(stat.enrich_mvp_sum / stat.count) : 0;
+      playerAvgMap[playerId] = avg;
       stat.player.avg_enrich_mvp = avg;
       if (avg > bestAvg) {
         bestAvg = avg;
         bestOverallPlayer = stat.player;
+      }
+    }
+    
+    // Update ALL player instances across ALL matches with their avg_enrich_mvp
+    for (const match of filteredMatches) {
+      if (Array.isArray(match.counterstrikersMVPs)) {
+        for (const mvp of match.counterstrikersMVPs) {
+          const key = String(mvp.player_id);
+          mvp.avg_enrich_mvp = playerAvgMap[key] || 0;
+        }
       }
     }
 
