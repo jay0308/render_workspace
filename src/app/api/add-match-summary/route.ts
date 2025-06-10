@@ -1,16 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJSONBlob, updateJSONBlob } from "@/utils/JSONBlobUtils";
-import { COUNTERSTRIKERS_TEAM_ID } from "@/utils/constants";
+import { getMVPData, updateMVPData, getConfigData } from "@/utils/JSONBlobUtils";
 
-function generateMatchData(parsedData: any) {
+async function generateMatchData(parsedData: any) {
   console.log(parsedData);
   // Extract match summary
   const summaryData = parsedData?.props?.pageProps?.summaryData?.data;
   const mvpData = parsedData?.props?.pageProps?.mvp?.data;
   if (!summaryData || !mvpData) throw new Error("Invalid match data structure");
 
+  // Get team ID from config
+  const config = await getConfigData();
+  
   // Filter MVPs for Counterstrikers
-  const counterstrikersMVPs = mvpData.filter((mvp: any) => mvp.team_id === COUNTERSTRIKERS_TEAM_ID);
+  const counterstrikersMVPs = mvpData.filter((mvp: any) => mvp.team_id === config.COUNTERSTRIKERS_TEAM_ID);
 
   // Prepare match summary (as shown on UI)
   const matchSummary = {
@@ -54,7 +56,7 @@ export async function POST(req: NextRequest) {
     // 1. Generate match data
     let matchData;
     try {
-      matchData = generateMatchData(parsedData);
+      matchData = await generateMatchData(parsedData);
     } catch (e: any) {
       return NextResponse.json({ error: e.message || "Failed to generate match data" }, { status: 500 });
     }
@@ -62,7 +64,7 @@ export async function POST(req: NextRequest) {
     // 2. Get data from JSONBlob
     let blobData;
     try {
-      blobData = await getJSONBlob();
+      blobData = await getMVPData();
     } catch (e: any) {
       blobData = {};
     }
@@ -80,7 +82,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Update JSONBlob
     try {
-      await updateJSONBlob(blobData);
+      await updateMVPData(blobData);
     } catch (e: any) {
       return NextResponse.json({ error: "Failed to update JSONBlob" }, { status: 500 });
     }

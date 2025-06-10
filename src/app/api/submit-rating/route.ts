@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJSONBlob, updateJSONBlob } from "@/utils/JSONBlobUtils";
+import { getJSONBlob, updateJSONBlob, BlobType } from "@/utils/JSONBlobUtils";
 import { ContextualFactors } from "@/utils/constants";
 
 export async function POST(req: NextRequest) {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch and update JSONBlob
-    const blobData = await getJSONBlob();
+    const blobData = await getJSONBlob(BlobType.MVP_DATA);
     if (!Array.isArray(blobData.matches)) {
       return NextResponse.json({ error: "No matches found" }, { status: 404 });
     }
@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     blobData.matches[matchIndex] = match;
 
     // Save the updated data
-    await updateJSONBlob(blobData);
+    await updateJSONBlob(BlobType.MVP_DATA, blobData);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in submit-rating:", error);

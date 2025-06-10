@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import MatchSummaryCard from "../components/MatchSummaryCard";
 import AddMatchModal from "@/components/AddMatchModal";
-import { ADMIN_PROFILE_ID } from "@/utils/constants";
+
 import { useRouter } from "next/navigation";
 import ShowMVPsModal from "../components/ShowMVPsModal";
 import { get, post } from "@/utils/request";
@@ -11,8 +11,10 @@ import AwardAnimationModal from "../components/AwardAnimationModal";
 import HomeTab from "../components/HomeTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamInfoTab from "../components/TeamInfoTab";
+import { TeamConfigProvider, useTeamConfig } from "../contexts/TeamConfigContext";
+import { getConfigData } from "@/utils/JSONBlobUtils";
 
-export default function Home() {
+function HomeContent() {
   const [showModal, setShowModal] = useState(false);
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
@@ -31,8 +33,12 @@ export default function Home() {
   const [ratePrefill, setRatePrefill] = useState<Record<string, number> | undefined>(undefined);
   const [rateCommentPrefill, setRateCommentPrefill] = useState<string | undefined>(undefined);
   const [showAwardModal, setShowAwardModal] = useState(false);
+  const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'team-stats' | 'team-info'>('home');
   const router = useRouter();
+
+  // Use team config context
+  const { teamConfig, setTeamConfig, setIsLoading: setTeamConfigLoading, setError: setTeamConfigError, isLoading: teamConfigLoading } = useTeamConfig();
 
   useEffect(() => {
     // Check for profile ID in localStorage
@@ -41,36 +47,59 @@ export default function Home() {
       router.replace("/login");
       return;
     }
-    setIsAdmin(profileId === String(ADMIN_PROFILE_ID));
-  }, [router]);
+    // Only check admin status if teamConfig is loaded
+    if (teamConfig) {
+      setIsAdmin(profileId === String(teamConfig.ADMIN_PROFILE_ID));
+    }
+  }, [router, teamConfig]);
 
   useEffect(() => {
-    const fetchMatches = async () => {
+    const fetchData = async () => {
       setFetching(true);
+      setTeamConfigLoading(true);
       setFetchError("");
+      setTeamConfigError(null);
+
       try {
-        const data = await get<{ matches: any[]; bestPlayerPerMatch: any[]; bestOverallPlayer: any }>("/api/get-matches");
-        if (Array.isArray(data.matches)) {
-          setMatches(data.matches);
+        // Fetch both MVP data and config data in parallel
+        const [matchesData, configData] = await Promise.all([
+          get<{ matches: any[]; bestPlayerPerMatch: any[]; bestOverallPlayer: any }>("/api/get-matches"),
+          getConfigData()
+        ]);
+
+        // Handle matches data
+        if (Array.isArray(matchesData.matches)) {
+          setMatches(matchesData.matches);
         } else {
           setMatches([]);
         }
-        setBestPlayerPerMatch(Array.isArray(data.bestPlayerPerMatch) ? data.bestPlayerPerMatch : []);
-        setBestOverallPlayer(data.bestOverallPlayer || null);
-      } catch (err) {
-        setFetchError("Failed to fetch matches");
-        setMatches([]);
-        setBestPlayerPerMatch([]);
-        setBestOverallPlayer(null);
+        setBestPlayerPerMatch(Array.isArray(matchesData.bestPlayerPerMatch) ? matchesData.bestPlayerPerMatch : []);
+        setBestOverallPlayer(matchesData.bestOverallPlayer || null);
+
+        // Handle config data
+        setTeamConfig(configData);
+
+      } catch (err: any) {
+        console.error("Error fetching data:", err);
+        if (err.message?.includes("config") || err.message?.includes("Config")) {
+          setTeamConfigError("Failed to load team configuration");
+        } else {
+          setFetchError("Failed to fetch matches");
+          setMatches([]);
+          setBestPlayerPerMatch([]);
+          setBestOverallPlayer(null);
+        }
       } finally {
         setFetching(false);
+        setTeamConfigLoading(false);
       }
     };
+
     const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
     if (profileId) {
-      fetchMatches();
+      fetchData();
     }
-  }, []);
+  }, [setTeamConfig, setTeamConfigLoading, setTeamConfigError]);
 
   const handleOpen = () => {
     setShowModal(true);
@@ -94,6 +123,9 @@ export default function Home() {
   };
 
   const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
+
+  // Show loading state if either data source is loading
+  const isDataLoading = fetching || teamConfigLoading;
 
   return (
     <div className="flex flex-col min-h-screen bg-white">
@@ -153,24 +185,33 @@ export default function Home() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center px-4 pt-8 pb-8">
-        {activeTab === 'home' && (
-          <HomeTab
-            bestOverallPlayer={bestOverallPlayer}
-            fetching={fetching}
-            fetchError={fetchError}
-            matches={matches}
-            bestPlayerPerMatch={bestPlayerPerMatch}
-            profileId={profileId}
-            setSelectedMVPs={setSelectedMVPs}
-            setSelectedMatchId={setSelectedMatchId}
-            setShowMVPsModal={setShowMVPsModal}
-            setShowAwardModal={setShowAwardModal}
-          />
-        )}
+        {isDataLoading ? (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-gray-500 text-lg">Loading application data...</div>
+          </div>
+        ) : (
+          <>
+            {activeTab === 'home' && (
+              <HomeTab
+                bestOverallPlayer={bestOverallPlayer}
+                fetching={fetching}
+                fetchError={fetchError}
+                matches={matches}
+                bestPlayerPerMatch={bestPlayerPerMatch}
+                profileId={profileId}
+                setSelectedMVPs={setSelectedMVPs}
+                setSelectedMatchId={setSelectedMatchId}
+                setShowMVPsModal={setShowMVPsModal}
+                setShowAwardModal={setShowAwardModal}
+                setRatingSubmitted={setRatingSubmitted}
+              />
+            )}
 
-        {activeTab === 'team-stats' && <TeamStatsTab />}
-        
-        {activeTab === 'team-info' && <TeamInfoTab />}
+            {activeTab === 'team-stats' && <TeamStatsTab />}
+            
+            {activeTab === 'team-info' && <TeamInfoTab />}
+          </>
+        )}
       </main>
 
       {/* Floating Add Match Button */}
@@ -197,7 +238,12 @@ export default function Home() {
 
       <ShowMVPsModal
         open={showMVPsModal}
-        onClose={() => { setShowMVPsModal(false); window.location.reload() }}
+        onClose={() => { 
+          setShowMVPsModal(false); 
+          if (ratingSubmitted) {
+            window.location.reload();
+          }
+        }}
         mvpList={selectedMVPs}
         selfProfileId={profileId || undefined}
         onRate={(player: any, lastRatings: Record<string, number> | undefined, lastComment: string | undefined) => {
@@ -219,6 +265,7 @@ export default function Home() {
           if (!ratePlayer || !selectedMatchId) return;
           try {
             await post("/api/submit-rating", { ratings, matchId: selectedMatchId, playerId: ratePlayer.player_id, comment });
+            setRatingSubmitted(true); // Mark that rating was submitted
             alert("Rating submitted successfully!");
           } catch (err: any) {
             alert(err.message || "Failed to submit rating");
@@ -240,5 +287,13 @@ export default function Home() {
         &copy; {new Date().getFullYear()} Counterstrikers MVP's
       </footer>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <TeamConfigProvider>
+      <HomeContent />
+    </TeamConfigProvider>
   );
 }

@@ -1,6 +1,4 @@
-export const COUNTERSTRIKERS_TEAM_ID = 1707850;
-export const ADMIN_PROFILE_ID = 1460919;
-export const AWARD_NOW_VISIBLITY_PROFILE_ID = [8882027];
+
 export const ContextualFactors = {
     CRITICAL_IMPACT:{
         name:"Wicket/Critical Run Impact",

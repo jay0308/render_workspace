@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getJSONBlob } from "@/utils/JSONBlobUtils";
+import { getJSONBlob, BlobType } from "@/utils/JSONBlobUtils";
 
 function calculateAverageRating(ratingsArr: any[]): number {
   if (!Array.isArray(ratingsArr) || ratingsArr.length === 0) return 0;
@@ -24,7 +24,7 @@ function round4(val: number) {
 
 export async function GET(req: NextRequest) {
   try {
-    const blobData = await getJSONBlob();
+    const blobData = await getJSONBlob(BlobType.MVP_DATA);
     const matches = Array.isArray(blobData.matches) ? blobData.matches : [];
     const filteredMatches = matches;
 

@@ -1,6 +1,6 @@
 import React from "react";
 import MatchSummaryCard from "./MatchSummaryCard";
-import { ADMIN_PROFILE_ID, AWARD_NOW_VISIBLITY_PROFILE_ID } from "@/utils/constants";
+import { useTeamConfig } from "../contexts/TeamConfigContext";
 import { post } from "@/utils/request";
 
 interface HomeTabProps {
@@ -14,6 +14,7 @@ interface HomeTabProps {
   setSelectedMatchId: (id: number | null) => void;
   setShowMVPsModal: (show: boolean) => void;
   setShowAwardModal: (show: boolean) => void;
+  setRatingSubmitted: (submitted: boolean) => void;
 }
 
 const HomeTab: React.FC<HomeTabProps> = ({
@@ -27,7 +28,10 @@ const HomeTab: React.FC<HomeTabProps> = ({
   setSelectedMatchId,
   setShowMVPsModal,
   setShowAwardModal,
+  setRatingSubmitted,
 }) => {
+  const { teamConfig } = useTeamConfig();
+  
   // Helper to get month name from last match
   const getLastMatchMonth = () => {
     if (!matches.length) return "";
@@ -55,7 +59,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
           </div>
           <div className="w-full flex justify-end">
             {profileId !== String(bestOverallPlayer?.player_id) && 
-             (profileId === String(ADMIN_PROFILE_ID) || AWARD_NOW_VISIBLITY_PROFILE_ID.includes(Number(profileId))) && (
+             (profileId === String(teamConfig?.ADMIN_PROFILE_ID) || teamConfig?.AWARD_NOW_VISIBLITY_PROFILE_ID.includes(Number(profileId))) && (
               <button
                 className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
                 onClick={async () => {
@@ -98,6 +102,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
                   onShowMVPs={() => {
                     setSelectedMVPs(match.counterstrikersMVPs || []);
                     setSelectedMatchId(match.matchId);
+                    setRatingSubmitted(false); // Reset rating submitted state when opening MVP modal
                     setShowMVPsModal(true);
                   }}
                   bestPlayer={bestPlayerForThisMatch}
