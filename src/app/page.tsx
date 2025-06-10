@@ -8,6 +8,9 @@ import ShowMVPsModal from "../components/ShowMVPsModal";
 import { get, post } from "@/utils/request";
 import RateMVPModal from "../components/RateMVPModal";
 import AwardAnimationModal from "../components/AwardAnimationModal";
+import HomeTab from "../components/HomeTab";
+import TeamStatsTab from "../components/TeamStatsTab";
+import TeamInfoTab from "../components/TeamInfoTab";
 
 export default function Home() {
   const [showModal, setShowModal] = useState(false);
@@ -28,6 +31,7 @@ export default function Home() {
   const [ratePrefill, setRatePrefill] = useState<Record<string, number> | undefined>(undefined);
   const [rateCommentPrefill, setRateCommentPrefill] = useState<string | undefined>(undefined);
   const [showAwardModal, setShowAwardModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'home' | 'team-stats' | 'team-info'>('home');
   const router = useRouter();
 
   useEffect(() => {
@@ -91,16 +95,6 @@ export default function Home() {
 
   const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
 
-  // Helper to get month name from last match
-  const getLastMatchMonth = () => {
-    if (!matches.length) return "";
-    const lastMatch = matches[matches.length - 1];
-    const dateStr = lastMatch?.matchSummary?.startDateTime;
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    return date.toLocaleString("default", { month: "long", year: "numeric" });
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-white">
       {/* Header */}
@@ -119,77 +113,68 @@ export default function Home() {
         </button>
       </header>
 
+      {/* Tabs Navigation */}
+      <div className="w-full bg-white border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-6">
+          <div className="flex space-x-8">
+            <button
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'home'
+                  ? 'border-teal-500 text-teal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveTab('home')}
+            >
+              Home
+            </button>
+            <button
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'team-stats'
+                  ? 'border-teal-500 text-teal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveTab('team-stats')}
+            >
+              Team Stats
+            </button>
+            <button
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'team-info'
+                  ? 'border-teal-500 text-teal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveTab('team-info')}
+            >
+              Team Info
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center px-4 pt-8 pb-8">
-        {bestOverallPlayer && (
-          <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col sm:flex-row items-center gap-4 shadow">
-            <div className="flex flex-row gap-2 w-full items-center">
-              <img src={bestOverallPlayer.profile_photo} alt={bestOverallPlayer.name} className="w-12 h-12 rounded-full object-cover border border-yellow-300" />
-              <div className="font-bold text-gray-800">{bestOverallPlayer.name}</div>
-            </div>
+        {activeTab === 'home' && (
+          <HomeTab
+            bestOverallPlayer={bestOverallPlayer}
+            fetching={fetching}
+            fetchError={fetchError}
+            matches={matches}
+            bestPlayerPerMatch={bestPlayerPerMatch}
+            profileId={profileId}
+            setSelectedMVPs={setSelectedMVPs}
+            setSelectedMatchId={setSelectedMatchId}
+            setShowMVPsModal={setShowMVPsModal}
+            setShowAwardModal={setShowAwardModal}
+          />
+        )}
 
-            <div className="flex-1">
-              <div className="font-semibold text-yellow-700 text-sm">
-                Best Overall Performer of Month {getLastMatchMonth()}
-              </div>
-              <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-yellow-700">{bestOverallPlayer.avg_enrich_mvp?.toFixed(4)}</span></div>
-            </div>
-            <div className="w-full flex justify-end">
-              {profileId !== String(bestOverallPlayer?.player_id) && (
-                <button
-                  className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
-                  onClick={async () => {
-                    if (window.confirm("Are you sure you want to award and clear all match data?")) {
-                      try {
-                        await post("/api/clear-matches", {});
-                        setShowAwardModal(true);
-                      } catch (err: any) {
-                        alert(err.message || "Failed to award player");
-                      }
-                    }
-                  }}
-                >
-                  Award Now
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-        {fetching ? (
-          <div className="text-gray-500 text-lg py-8">Loading...</div>
-        ) : fetchError ? (
-          <div className="text-red-500 text-lg py-8">{fetchError}</div>
-        ) : matches.length === 0 ? (
-          <div className="text-gray-500 text-lg py-8">No match found</div>
-        ) : (
-          <div className="flex flex-col gap-6 w-full max-w-xl mx-auto">
-            {matches
-              .sort((a, b) => new Date(b.matchSummary.startDateTime).getTime() - new Date(a.matchSummary.startDateTime).getTime())
-              .map((match, index) => {
-                const bestPlayerForThisMatch = bestPlayerPerMatch.find(bp => bp.matchId === match.matchId)?.player;
-                return (
-                  <MatchSummaryCard
-                    key={match.matchId}
-                    {...match.matchSummary}
-                    matchSummary={match.matchSummary.matchSummary}
-                    matchResult={match.matchSummary.matchResult}
-                    teamA={match.matchSummary.teamA}
-                    teamB={match.matchSummary.teamB}
-                    onShowMVPs={() => {
-                      setSelectedMVPs(match.counterstrikersMVPs || []);
-                      setSelectedMatchId(match.matchId);
-                      setShowMVPsModal(true);
-                    }}
-                    bestPlayer={bestPlayerForThisMatch}
-                  />
-                );
-              })}
-          </div>
-        )}
+        {activeTab === 'team-stats' && <TeamStatsTab />}
+        
+        {activeTab === 'team-info' && <TeamInfoTab />}
       </main>
 
       {/* Floating Add Match Button */}
-      {isAdmin && (
+      {isAdmin && activeTab === 'home' && (
         <button
           className="fixed bottom-20 right-6 z-50 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
           onClick={handleOpen}
