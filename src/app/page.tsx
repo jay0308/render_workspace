@@ -11,6 +11,7 @@ import AwardAnimationModal from "../components/AwardAnimationModal";
 import HomeTab from "../components/HomeTab";
 import TeamStatsTab from "../components/TeamStatsTab";
 import TeamInfoTab from "../components/TeamInfoTab";
+import SubmitMatchStatsModal from "../components/SubmitMatchStatsModal";
 import { TeamConfigProvider, useTeamConfig } from "../contexts/TeamConfigContext";
 import { getConfigData } from "@/utils/JSONBlobUtils";
 
@@ -35,6 +36,9 @@ function HomeContent() {
   const [showAwardModal, setShowAwardModal] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'team-stats' | 'team-info'>('home');
+  const [showSubmitMatchStatsModal, setShowSubmitMatchStatsModal] = useState(false);
+  const [submitMatchStatsError, setSubmitMatchStatsError] = useState("");
+  const [submitMatchStatsLoading, setSubmitMatchStatsLoading] = useState(false);
   const router = useRouter();
 
   // Use team config context
@@ -121,6 +125,30 @@ function HomeContent() {
       window.location.reload();
     }
   };
+
+  const handleSubmitMatchStatsOpen = () => {
+    setShowSubmitMatchStatsModal(true);
+    setSubmitMatchStatsError("");
+  };
+
+  const handleSubmitMatchStatsClose = () => setShowSubmitMatchStatsModal(false);
+
+  const handleSubmitMatchStatsSubmit = async (jsonData: string) => {
+    setSubmitMatchStatsLoading(true);
+    setSubmitMatchStatsError("");
+    try {
+      await post("/api/submit-match-stats", { matchStatsJSON: jsonData });
+      setShowSubmitMatchStatsModal(false);
+      alert("Match statistics submitted successfully!");
+      window.location.reload();
+    } catch (err: any) {
+      setSubmitMatchStatsError(err.message || "Something went wrong");
+    } finally {
+      setSubmitMatchStatsLoading(false);
+    }
+  };
+
+
 
   const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
 
@@ -225,6 +253,17 @@ function HomeContent() {
         </button>
       )}
 
+      {/* Floating Submit Match Stats Button */}
+      {isAdmin && activeTab === 'team-stats' && (
+        <button
+          className="fixed bottom-20 right-6 z-50 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-2xl transition-all"
+          onClick={handleSubmitMatchStatsOpen}
+          title="Submit Match Stats"
+        >
+          🏏
+        </button>
+      )}
+
       <AddMatchModal
         open={showModal}
         url={url}
@@ -280,6 +319,15 @@ function HomeContent() {
           window.location.reload();
         }}
         playerName={bestOverallPlayer?.name || ""}
+      />
+
+      <SubmitMatchStatsModal
+        open={showSubmitMatchStatsModal}
+        onClose={handleSubmitMatchStatsClose}
+        onSubmit={handleSubmitMatchStatsSubmit}
+        loading={submitMatchStatsLoading}
+        error={submitMatchStatsError}
+        setError={setSubmitMatchStatsError}
       />
 
       {/* Footer */}

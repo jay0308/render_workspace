@@ -9,7 +9,7 @@ export enum BlobType {
 const BLOB_IDS: Record<BlobType, string> = {
   [BlobType.MVP_DATA]: "1379082578547630080", // Current MVP data
   [BlobType.CONFIG_DATA]: "1381995549015859200", // Add your config blob ID here
-  [BlobType.TEAM_STATS]: "", // Add your team stats blob ID here
+  [BlobType.TEAM_STATS]: "1382061324179267584", // Add your team stats blob ID here
 };
 
 export const getJSONBlobUrl = (blobType: BlobType) => {
