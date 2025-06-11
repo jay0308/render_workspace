@@ -1,112 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { get, post } from "@/utils/request";
+import { post } from "@/utils/request";
 import { useTeamConfig } from "../contexts/TeamConfigContext";
+import { useTeamStats, AggregatedBattingStats, AggregatedBowlingStats, TeamStatsData } from "../contexts/TeamStatsContext";
 import BattingOrderModal from "./BattingOrderModal";
 
-interface BattingRecord {
-  playerId: number;
-  playerName: string;
-  runs: number;
-  balls: number;
-  fours: number;
-  sixes: number;
-  strikeRate: string;
-  howOut: string;
-  minutes: number;
-  matchId: number;
-  matchDate: string;
-  opponent: string;
-}
-
-interface BowlingRecord {
-  playerId: number;
-  playerName: string;
-  overs: string;
-  maidens: number;
-  runs: number;
-  wickets: number;
-  economyRate: string;
-  wides: number;
-  noBalls: number;
-  dotBalls: number;
-  matchId: number;
-  matchDate: string;
-  opponent: string;
-}
-
-interface MatchRecord {
-  matchId: number;
-  tournament: string;
-  round: string;
-  venue: string;
-  city: string;
-  matchType: string;
-  overs: number;
-  startDateTime: string;
-  tossDetails: string;
-  teamA: { id: number; name: string; score: string };
-  teamB: { id: number; name: string; score: string };
-  matchResult: string;
-  winBy: string;
-  winningTeam: string;
-  playerOfTheMatch?: any;
-  scorecard: {
-    matchId: number;
-    opponent: string;
-    matchResult: string;
-    teamScore: string;
-    opponentScore: string;
-    teamBatting: BattingRecord[];
-    teamBowling: BowlingRecord[];
-  };
-}
-
-interface AggregatedBattingStats {
-  playerId: number;
-  playerName: string;
-  matches: number;
-  innings: number;
-  totalRuns: number;
-  totalBalls: number;
-  totalFours: number;
-  totalSixes: number;
-  highestScore: number;
-  notOutInnings: number;
-  average: number;
-  strikeRate: number;
-}
-
-interface AggregatedBowlingStats {
-  playerId: number;
-  playerName: string;
-  matches: number;
-  innings: number;
-  totalOvers: number;
-  totalBalls: number;
-  totalRuns: number;
-  totalWickets: number;
-  totalMaidens: number;
-  economyRate: number;
-  bowlingAverage: number;
-  bestFigures: string;
-}
-
-interface TeamStatsData {
-  matches: MatchRecord[];
-  battingStats: BattingRecord[];
-  bowlingStats: BowlingRecord[];
-  aggregatedBattingStats: AggregatedBattingStats[];
-  aggregatedBowlingStats: AggregatedBowlingStats[];
-  metadata?: {
-    lastUpdated: string;
-    totalMatches: number;
-  };
-}
-
 const TeamStatsTab: React.FC = () => {
-  const [teamStats, setTeamStats] = useState<TeamStatsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<'matches' | 'batting' | 'bowling'>('matches');
   const [battingSortBy, setBattingSortBy] = useState<keyof AggregatedBattingStats>('totalRuns');
   const [battingSortOrder, setBattingSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -115,35 +13,14 @@ const TeamStatsTab: React.FC = () => {
   const [showBattingOrderModal, setShowBattingOrderModal] = useState(false);
   const [isLegendExpanded, setIsLegendExpanded] = useState(false);
   const { teamConfig } = useTeamConfig();
+  const { teamStats, isLoading: loading, error, fetchTeamStats, refreshTeamStats } = useTeamStats();
   
   // Get profile ID from localStorage
   const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
 
   useEffect(() => {
-    const fetchTeamStats = async () => {
-      try {
-        setLoading(true);
-        // This will fetch from TEAM_STATS blob when implemented
-        const data = await get<TeamStatsData>("/api/get-team-stats");
-        setTeamStats(data);
-      } catch (err) {
-        setError("Failed to load team statistics");
-        console.error("Error fetching team stats:", err);
-        // Set empty data for now
-        setTeamStats({
-          matches: [],
-          battingStats: [],
-          bowlingStats: [],
-          aggregatedBattingStats: [],
-          aggregatedBowlingStats: []
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTeamStats();
-  }, []);
+  }, [fetchTeamStats]);
 
   const handleReshuffle = () => {
     setShowBattingOrderModal(true);
@@ -154,6 +31,9 @@ const TeamStatsTab: React.FC = () => {
       // Clear team stats data when batting order is updated
       await post("/api/clear-team-stats", {});
       console.log("Team statistics cleared after batting order update");
+      
+      // Refresh team stats from context
+      await refreshTeamStats();
     } catch (err) {
       console.error("Failed to clear team stats:", err);
       // Continue anyway since batting order was updated successfully
@@ -271,7 +151,9 @@ const TeamStatsTab: React.FC = () => {
       {teamStats?.matches?.length === 0 ? (
         <div className="text-center text-gray-500 py-8">No match statistics available</div>
       ) : (
-        teamStats?.matches?.map((match, index) => {
+        teamStats?.matches
+          ?.sort((a: any, b: any) => new Date(b.startDateTime).getTime() - new Date(a.startDateTime).getTime())
+          ?.map((match: any, index: number) => {
           const isCounterStrikersWin = match.winningTeam === 'CounterStrikers';
           const opponent = match.scorecard.opponent;
           const matchDate = new Date(match.startDateTime).toLocaleDateString();
@@ -309,6 +191,17 @@ const TeamStatsTab: React.FC = () => {
                   <p className="text-xs text-gray-500">{match.tossDetails}</p>
                 )}
               </div>
+
+              {(match.tinyShareUrl || match.scorecard.tinyShareUrl) && (
+                <div className="mt-3 pt-2 border-t border-gray-100">
+                  <button
+                    className="w-full py-2 rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold text-sm shadow transition-colors"
+                    onClick={() => window.open(match.tinyShareUrl || match.scorecard.tinyShareUrl, '_blank')}
+                  >
+                    📊 View Full Scorecard
+                  </button>
+                </div>
+              )}
             </div>
           );
         })
@@ -318,8 +211,8 @@ const TeamStatsTab: React.FC = () => {
 
   // Check if player is an all-rounder (appears in both batting and bowling stats)
   const isAllRounder = (playerId: number) => {
-    const hasBatting = teamStats?.aggregatedBattingStats?.some(p => p.playerId === playerId);
-    const hasBowling = teamStats?.aggregatedBowlingStats?.some(p => p.playerId === playerId);
+    const hasBatting = teamStats?.aggregatedBattingStats?.some((p: any) => p.playerId === playerId);
+    const hasBowling = teamStats?.aggregatedBowlingStats?.some((p: any) => p.playerId === playerId);
     return hasBatting && hasBowling;
   };
 
@@ -410,7 +303,7 @@ const TeamStatsTab: React.FC = () => {
     // Check if player is an all-rounder
     if (isAllRounder(player.playerId)) {
       const battingScore = getBattingScore(player);
-      const bowlingPlayer = teamStats?.aggregatedBowlingStats?.find(p => p.playerId === player.playerId);
+      const bowlingPlayer = teamStats?.aggregatedBowlingStats?.find((p: any) => p.playerId === player.playerId);
       const bowlingScore = bowlingPlayer ? getBowlingScore(bowlingPlayer) : 0;
       
       // Combined score for all-rounders (weighted average)
@@ -597,7 +490,7 @@ const TeamStatsTab: React.FC = () => {
     // Check if player is an all-rounder
     if (isAllRounder(player.playerId)) {
       const bowlingScore = getBowlingScore(player);
-      const battingPlayer = teamStats?.aggregatedBattingStats?.find(p => p.playerId === player.playerId);
+      const battingPlayer = teamStats?.aggregatedBattingStats?.find((p: any) => p.playerId === player.playerId);
       const battingScore = battingPlayer ? getBattingScore(battingPlayer) : 0;
       
       // Combined score for all-rounders (weighted average)

@@ -13,6 +13,7 @@ import TeamStatsTab from "../components/TeamStatsTab";
 import TeamInfoTab from "../components/TeamInfoTab";
 import SubmitMatchStatsModal from "../components/SubmitMatchStatsModal";
 import { TeamConfigProvider, useTeamConfig } from "../contexts/TeamConfigContext";
+import { TeamStatsProvider } from "../contexts/TeamStatsContext";
 import { getConfigData } from "@/utils/JSONBlobUtils";
 
 function HomeContent() {
@@ -380,7 +381,9 @@ function HomeContent() {
 export default function Home() {
   return (
     <TeamConfigProvider>
-      <HomeContent />
+      <TeamStatsProvider>
+        <HomeContent />
+      </TeamStatsProvider>
     </TeamConfigProvider>
   );
 }

@@ -121,7 +121,8 @@ const SubmitMatchStatsModal: React.FC<SubmitMatchStatsModalProps> = ({
             "summary": "Opponent Team won by 31 runs"
           },
           "win_by": "31 runs",
-          "winning_team": "Opponent Team"
+          "winning_team": "Opponent Team",
+          "tiny_share_url": "https://matchscorecard.page.link/95Pok8R9EcxzgSKG9"
         }
       }
     }

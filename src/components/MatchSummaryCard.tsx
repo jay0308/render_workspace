@@ -25,6 +25,7 @@ type MatchSummaryCardProps = {
   matchResult: string;
   onShowMVPs?: () => void;
   bestPlayer?: BestPlayer;
+  tinyShareUrl?: string;
 };
 
 const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
@@ -40,6 +41,7 @@ const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
   matchResult,
   onShowMVPs,
   bestPlayer,
+  tinyShareUrl,
 }) => {
   return (
     <div className="w-full max-w-xl bg-white rounded-lg shadow-md p-4 sm:p-6 mt-0">
@@ -80,14 +82,25 @@ const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
         </div>
       )}
 
-      {onShowMVPs && (
-        <button
-          className="mt-6 w-full py-2 rounded bg-teal-600 text-white hover:bg-teal-700 font-semibold text-base shadow"
-          onClick={onShowMVPs}
-        >
-          Show MVP's
-        </button>
-      )}
+      <div className="flex flex-col sm:flex-row gap-3 mt-6">
+        {tinyShareUrl && (
+          <button
+            className="flex-1 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold text-base shadow transition-colors"
+            onClick={() => window.open(tinyShareUrl, '_blank')}
+          >
+            📊 View Scorecard
+          </button>
+        )}
+        
+        {onShowMVPs && (
+          <button
+            className={`${tinyShareUrl ? 'flex-1' : 'w-full'} py-2 rounded bg-teal-600 text-white hover:bg-teal-700 font-semibold text-base shadow transition-colors`}
+            onClick={onShowMVPs}
+          >
+            Show MVP's
+          </button>
+        )}
+      </div>
     </div>
   );
 };

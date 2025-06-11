@@ -69,6 +69,7 @@ interface MatchScorecardData {
   opponentScore: string;
   matchType: string;
   overs: number;
+  tinyShareUrl?: string;
 }
 
 async function extractScorecardData(matchJson: any): Promise<MatchScorecardData> {
@@ -135,7 +136,8 @@ async function extractScorecardData(matchJson: any): Promise<MatchScorecardData>
     teamScore: counterStrikersTeam.inning.summary.score,
     opponentScore: opponentTeam?.inning?.summary?.score || "Unknown",
     matchType: summaryData.match_type,
-    overs: summaryData.overs
+    overs: summaryData.overs,
+    tinyShareUrl: summaryData.tiny_share_url
   };
 }
 
@@ -171,6 +173,7 @@ function extractMatchSummary(matchJson: any) {
     winningTeam: summaryData.winning_team,
     playerOfTheMatch: summaryData.player_of_the_match,
     bestPerformances: summaryData.best_performances,
+    tinyShareUrl: summaryData.tiny_share_url,
     createdAt: new Date().toISOString()
   };
 }
@@ -245,7 +248,10 @@ export async function POST(req: NextRequest) {
     
     teamStats.matches.push({
       ...matchSummary,
-      scorecard: scorecardData
+      scorecard: {
+        ...scorecardData,
+        tinyShareUrl: scorecardData.tinyShareUrl
+      }
     });
 
     // Update team batting stats (individual records)

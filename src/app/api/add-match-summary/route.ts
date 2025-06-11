@@ -28,6 +28,7 @@ async function generateMatchData(parsedData: any) {
     teamB: summaryData.team_b,
     matchSummary: summaryData.match_summary.summary,
     matchResult: summaryData.status,
+    tinyShareUrl: summaryData.tiny_share_url,
   };
 
   return {

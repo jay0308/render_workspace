@@ -99,6 +99,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
                   matchResult={match.matchSummary.matchResult}
                   teamA={match.matchSummary.teamA}
                   teamB={match.matchSummary.teamB}
+                  tinyShareUrl={match.matchSummary.tinyShareUrl}
                   onShowMVPs={() => {
                     setSelectedMVPs(match.counterstrikersMVPs || []);
                     setSelectedMatchId(match.matchId);
