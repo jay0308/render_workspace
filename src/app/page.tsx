@@ -212,7 +212,7 @@ function HomeContent() {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center px-4 pt-8 pb-8">
+      <main className="flex-1 flex flex-col items-center px-4 pt-8 pb-24 md:pb-8">
         {isDataLoading ? (
           <div className="flex items-center justify-center h-64">
             <div className="text-gray-500 text-lg">Loading application data...</div>
@@ -245,7 +245,7 @@ function HomeContent() {
       {/* Floating Add Match Button */}
       {isAdmin && activeTab === 'home' && (
         <button
-          className="fixed bottom-20 right-6 z-50 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
+          className="fixed bottom-24 md:bottom-20 right-6 z-40 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
           onClick={handleOpen}
           title="Add Match"
         >
@@ -256,13 +256,52 @@ function HomeContent() {
       {/* Floating Submit Match Stats Button */}
       {isAdmin && activeTab === 'team-stats' && (
         <button
-          className="fixed bottom-20 right-6 z-50 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-2xl transition-all"
+          className="fixed bottom-24 md:bottom-20 right-6 z-40 bg-green-600 hover:bg-green-700 text-white font-bold rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-2xl transition-all"
           onClick={handleSubmitMatchStatsOpen}
           title="Submit Match Stats"
         >
           🏏
         </button>
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 md:hidden bg-white border-t border-gray-200 shadow-lg z-50">
+        <div className="flex">
+          <button
+            className={`flex-1 px-2 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
+              activeTab === 'home'
+                ? 'text-teal-600 bg-teal-50 border-t-2 border-teal-500'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => setActiveTab('home')}
+          >
+            <span className="text-lg">🏠</span>
+            <span className="leading-none">Home</span>
+          </button>
+          <button
+            className={`flex-1 px-2 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
+              activeTab === 'team-stats'
+                ? 'text-teal-600 bg-teal-50 border-t-2 border-teal-500'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => setActiveTab('team-stats')}
+          >
+            <span className="text-lg">📊</span>
+            <span className="leading-none">Team Stats</span>
+          </button>
+          <button
+            className={`flex-1 px-2 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
+              activeTab === 'team-info'
+                ? 'text-teal-600 bg-teal-50 border-t-2 border-teal-500'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => setActiveTab('team-info')}
+          >
+            <span className="text-lg">ℹ️</span>
+            <span className="leading-none">Team Info</span>
+          </button>
+        </div>
+      </div>
 
       <AddMatchModal
         open={showModal}
@@ -331,7 +370,7 @@ function HomeContent() {
       />
 
       {/* Footer */}
-      <footer className="w-full py-3 px-6 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500">
+      <footer className="w-full py-3 px-6 bg-gray-50 border-t border-gray-200 text-center text-sm text-gray-500 md:block hidden">
         &copy; {new Date().getFullYear()} Counterstrikers MVP's
       </footer>
     </div>

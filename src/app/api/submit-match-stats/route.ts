@@ -17,6 +17,7 @@ interface AggregatedBattingStats {
   playerId: number;
   playerName: string;
   matches: number;
+  innings: number;
   totalRuns: number;
   totalBalls: number;
   totalFours: number;
@@ -31,6 +32,7 @@ interface AggregatedBowlingStats {
   playerId: number;
   playerName: string;
   matches: number;
+  innings: number;
   totalOvers: number;
   totalBalls: number;
   totalRuns: number;
@@ -272,6 +274,7 @@ export async function POST(req: NextRequest) {
           playerId,
           playerName: record.playerName,
           matches: 0,
+          innings: 0,
           totalRuns: 0,
           totalBalls: 0,
           totalFours: 0,
@@ -285,6 +288,7 @@ export async function POST(req: NextRequest) {
 
       const playerStats = updatedAggregatedStats.get(playerId)!;
       playerStats.matches += 1;
+      playerStats.innings += 1; // Track innings played
       playerStats.totalRuns += record.runs;
       playerStats.totalBalls += record.balls;
       playerStats.totalFours += record.fours;
@@ -333,6 +337,7 @@ export async function POST(req: NextRequest) {
           playerId,
           playerName: record.playerName,
           matches: 0,
+          innings: 0,
           totalOvers: 0,
           totalBalls: 0,
           totalRuns: 0,
@@ -346,6 +351,7 @@ export async function POST(req: NextRequest) {
 
       const playerStats = updatedBowlingStats.get(playerId)!;
       playerStats.matches += 1;
+      playerStats.innings += 1; // Track innings bowled
       
       // Parse overs (format: "4.0" means 4 overs and 0 balls)
       const oversParts = record.overs.split('.');
