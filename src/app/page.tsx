@@ -186,7 +186,7 @@ function HomeContent() {
               }`}
               onClick={() => setActiveTab('home')}
             >
-              Home
+              Team MVPs
             </button>
             <button
               className={`py-4 px-1 border-b-2 font-medium text-sm ${
@@ -277,7 +277,7 @@ function HomeContent() {
             onClick={() => setActiveTab('home')}
           >
             <span className="text-lg">🏠</span>
-            <span className="leading-none">Home</span>
+            <span className="leading-none">Team MVPs</span>
           </button>
           <button
             className={`flex-1 px-2 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
