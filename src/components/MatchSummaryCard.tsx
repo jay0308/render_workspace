@@ -82,7 +82,7 @@ const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-3 mt-6">
+      <div className="flex flex-row gap-3 mt-6">
         {tinyShareUrl && (
           <button
             className="flex-1 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 font-semibold text-base shadow transition-colors"
