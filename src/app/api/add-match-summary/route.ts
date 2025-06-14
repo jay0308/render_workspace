@@ -85,6 +85,7 @@ export async function POST(req: NextRequest) {
     try {
       await updateMVPData(blobData);
     } catch (e: any) {
+      console.log(e);
       return NextResponse.json({ error: "Failed to update JSONBlob" }, { status: 500 });
     }
 

@@ -119,11 +119,11 @@ function HomeContent() {
     try {
       await post("/api/add-match-summary", { matchDataJSONString: nextData });
       setShowModal(false);
+      window.location.reload();
     } catch (err: any) {
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
-      window.location.reload();
     }
   };
 

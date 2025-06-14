@@ -8,8 +8,14 @@ export async function POST(req: NextRequest) {
     
     // Check if user is admin (you can expand this to include other authorized users)
     const profileId = req.headers.get("x-profile-id");
-    if (!profileId || profileId !== String(currentConfig.ADMIN_PROFILE_ID)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    if (!profileId) {
+      return NextResponse.json({ error: "Unauthorized - Profile ID required" }, { status: 403 });
+    }
+
+    const isAdmin = profileId === String(currentConfig.ADMIN_PROFILE_ID);
+    const isAwardUser = currentConfig.AWARD_NOW_VISIBLITY_PROFILE_ID.includes(Number(profileId));
+    if (!isAdmin && !isAwardUser) {
+      return NextResponse.json({ error: "Unauthorized - Admin or award user access required" }, { status: 403 });
     }
 
     const teamConfigData = await req.json();

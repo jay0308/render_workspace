@@ -14,7 +14,6 @@ export async function POST(req: NextRequest) {
 
     const isAdmin = profileId === String(currentConfig.ADMIN_PROFILE_ID);
     const isAwardUser = currentConfig.AWARD_NOW_VISIBLITY_PROFILE_ID.includes(Number(profileId));
-    
     if (!isAdmin && !isAwardUser) {
       return NextResponse.json({ error: "Unauthorized - Admin or award user access required" }, { status: 403 });
     }
