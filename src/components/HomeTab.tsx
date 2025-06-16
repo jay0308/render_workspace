@@ -35,7 +35,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
   // Helper to get month name from last match
   const getLastMatchMonth = () => {
     if (!matches.length) return "";
-    const lastMatch = matches[0];
+    const lastMatch = matches[matches.length - 1];
     const dateStr = lastMatch?.matchSummary?.startDateTime;
     if (!dateStr) return "";
     const date = new Date(dateStr);
