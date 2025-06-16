@@ -33,6 +33,7 @@ interface TeamConfig {
     teamName: string;
     version: string;
     decisionAuthority: string[];
+    minimumBenchmarkNotes: string;
   };
   additionalInfo: {
     importantNote: {

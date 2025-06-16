@@ -63,6 +63,9 @@ const TeamInfoTab: React.FC = () => {
           <p className="text-sm text-blue-600 mt-1">
             Evaluations conducted after every {teamConfig.metadata?.evaluationFrequency || "7-8 innings"}
           </p>
+          <p className="text-sm text-orange-600 mt-1">
+            {teamConfig?.metadata?.minimumBenchmarkNotes}
+          </p>
         </div>
         <div className="p-6">
           {benchmarks && benchmarks.length > 0 ? (
