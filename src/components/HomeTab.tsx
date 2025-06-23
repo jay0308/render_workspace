@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import MatchSummaryCard from "./MatchSummaryCard";
 import { useTeamConfig } from "../contexts/TeamConfigContext";
 import { post } from "@/utils/request";
@@ -34,15 +34,21 @@ const HomeTab: React.FC<HomeTabProps> = ({
 }) => {
   const { teamConfig } = useTeamConfig();
   
-  // Helper to get month name from last match
-  const getLastMatchMonth = () => {
-    if (!matches.length) return "";
-    const lastMatch = matches[matches.length - 1];
-    const dateStr = lastMatch?.matchSummary?.startDateTime;
-    if (!dateStr) return "";
+  const lastMatchMonth = useMemo(() => {
+    if (!matches.length) {
+      return "";
+    }
+    const sortedMatches = [...matches].sort((a, b) => 
+      new Date(b.matchSummary.startDateTime).getTime() - new Date(a.matchSummary.startDateTime).getTime()
+    );
+    const mostRecentMatch = sortedMatches[0];
+    const dateStr = mostRecentMatch?.matchSummary?.startDateTime;
+    if (!dateStr) {
+      return "";
+    }
     const date = new Date(dateStr);
     return date.toLocaleString("default", { month: "long", year: "numeric" });
-  };
+  }, [matches]);
 
   return (
     <>
@@ -58,7 +64,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
             {/* Performer Details */}
             <div className="flex-1 w-full">
               <div className="font-semibold text-yellow-700 text-sm">
-                Best Overall Performer of Month {getLastMatchMonth()}
+                Best Overall Performer of Month {lastMatchMonth}
               </div>
               <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-yellow-700">{bestOverallPlayer.avg_enrich_mvp?.toFixed(4)}</span></div>
             </div>

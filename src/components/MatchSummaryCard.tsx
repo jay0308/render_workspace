@@ -43,10 +43,19 @@ const MatchSummaryCard: React.FC<MatchSummaryCardProps> = ({
   bestPlayer,
   tinyShareUrl,
 }) => {
+  const formattedDateTime = new Date(startDateTime).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+
   return (
     <div className="w-full max-w-xl bg-white rounded-lg shadow-md p-4 sm:p-6 mt-0">
       <div className="text-xs sm:text-sm text-teal-700 font-medium mb-1">
-        {groundName}, {cityName}, {matchType}, <span className="font-bold">{overs} Ov.</span>, {startDateTime}
+        {groundName}, {cityName}, {matchType}, <span className="font-bold">{overs} Ov.</span>, {formattedDateTime}
         <span className="inline-block align-middle ml-2 text-red-500" role="img" aria-label="cricket">🏏</span>
       </div>
       <div className="text-gray-600 text-xs sm:text-sm mb-4">{tossDetails}</div>
