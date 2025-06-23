@@ -73,15 +73,17 @@ export async function GET(req: NextRequest) {
       playerAvgMap[stat.player.player_id] = avg;
     });
 
-    // Determine the best overall player based on match count and then average MVP
-    const sortedPlayers = Object.values(playerStats).sort((a, b) => {
-      if (b.count !== a.count) {
-        return b.count - a.count;
-      }
-      return b.player.avg_enrich_mvp - a.player.avg_enrich_mvp;
-    });
+    // Determine the best overall player by a weighted score (match count * avg MVP)
+    let bestOverallPlayer = null;
+    let maxWeightedScore = -1;
 
-    const bestOverallPlayer = sortedPlayers.length > 0 ? sortedPlayers[0].player : null;
+    for (const stat of Object.values(playerStats)) {
+      const weightedScore = stat.count * stat.player.avg_enrich_mvp;
+      if (weightedScore > maxWeightedScore) {
+        maxWeightedScore = weightedScore;
+        bestOverallPlayer = stat.player;
+      }
+    }
 
     return NextResponse.json({
       matches: filteredMatches,
