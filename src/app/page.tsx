@@ -15,6 +15,7 @@ import SubmitMatchStatsModal from "../components/SubmitMatchStatsModal";
 import { TeamConfigProvider, useTeamConfig } from "../contexts/TeamConfigContext";
 import { TeamStatsProvider } from "../contexts/TeamStatsContext";
 import { getConfigData } from "@/utils/JSONBlobUtils";
+import AvgMVPsModal from "@/components/AvgMVPsModal";
 
 function HomeContent() {
   const [showModal, setShowModal] = useState(false);
@@ -40,6 +41,8 @@ function HomeContent() {
   const [showSubmitMatchStatsModal, setShowSubmitMatchStatsModal] = useState(false);
   const [submitMatchStatsError, setSubmitMatchStatsError] = useState("");
   const [submitMatchStatsLoading, setSubmitMatchStatsLoading] = useState(false);
+  const [showAvgMvpsModal, setShowAvgMvpsModal] = useState(false);
+  const [avgMvpData, setAvgMvpData] = useState<any[]>([]);
   const router = useRouter();
 
   // Use team config context
@@ -75,11 +78,43 @@ function HomeContent() {
         // Handle matches data
         if (Array.isArray(matchesData.matches)) {
           setMatches(matchesData.matches);
+          setBestPlayerPerMatch(Array.isArray(matchesData.bestPlayerPerMatch) ? matchesData.bestPlayerPerMatch : []);
+          setBestOverallPlayer(matchesData.bestOverallPlayer || null);
+
+          // Calculate average MVP data
+          const playerStats = new Map<number, { totalMvp: number; matchIds: Set<number>; name: string; profilePhoto: string }>();
+
+          matchesData.matches.forEach((match: any) => {
+            if (match.counterstrikersMVPs) {
+              match.counterstrikersMVPs.forEach((mvp: any) => {
+                if (!playerStats.has(mvp.player_id)) {
+                  playerStats.set(mvp.player_id, {
+                    totalMvp: 0,
+                    matchIds: new Set(),
+                    name: mvp.name,
+                    profilePhoto: mvp.profile_photo,
+                  });
+                }
+                const stats = playerStats.get(mvp.player_id)!;
+                stats.totalMvp += parseFloat(mvp.total);
+                stats.matchIds.add(match.matchId);
+              });
+            }
+          });
+
+          const avgMvpDataResult = Array.from(playerStats.entries()).map(([playerId, stats]) => ({
+            playerId,
+            playerName: stats.name,
+            profilePhoto: stats.profilePhoto,
+            avgMvp: stats.matchIds.size > 0 ? stats.totalMvp / stats.matchIds.size : 0,
+            matchCount: stats.matchIds.size,
+          }));
+
+          setAvgMvpData(avgMvpDataResult);
+
         } else {
           setMatches([]);
         }
-        setBestPlayerPerMatch(Array.isArray(matchesData.bestPlayerPerMatch) ? matchesData.bestPlayerPerMatch : []);
-        setBestOverallPlayer(matchesData.bestOverallPlayer || null);
 
         // Handle config data
         setTeamConfig(configData);
@@ -148,8 +183,6 @@ function HomeContent() {
       setSubmitMatchStatsLoading(false);
     }
   };
-
-
 
   const profileId = typeof window !== "undefined" ? localStorage.getItem("cricheroes_profile_id") : null;
 
@@ -233,6 +266,7 @@ function HomeContent() {
                 setShowMVPsModal={setShowMVPsModal}
                 setShowAwardModal={setShowAwardModal}
                 setRatingSubmitted={setRatingSubmitted}
+                onShowAvgMvps={() => setShowAvgMvpsModal(true)}
               />
             )}
 
@@ -368,6 +402,12 @@ function HomeContent() {
         loading={submitMatchStatsLoading}
         error={submitMatchStatsError}
         setError={setSubmitMatchStatsError}
+      />
+
+      <AvgMVPsModal
+        open={showAvgMvpsModal}
+        onClose={() => setShowAvgMvpsModal(false)}
+        avgMvpData={avgMvpData}
       />
 
       {/* Footer */}

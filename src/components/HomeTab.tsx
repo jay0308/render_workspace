@@ -15,6 +15,7 @@ interface HomeTabProps {
   setShowMVPsModal: (show: boolean) => void;
   setShowAwardModal: (show: boolean) => void;
   setRatingSubmitted: (submitted: boolean) => void;
+  onShowAvgMvps: () => void;
 }
 
 const HomeTab: React.FC<HomeTabProps> = ({
@@ -29,6 +30,7 @@ const HomeTab: React.FC<HomeTabProps> = ({
   setShowMVPsModal,
   setShowAwardModal,
   setRatingSubmitted,
+  onShowAvgMvps,
 }) => {
   const { teamConfig } = useTeamConfig();
   
@@ -45,37 +47,54 @@ const HomeTab: React.FC<HomeTabProps> = ({
   return (
     <>
       {bestOverallPlayer && (
-        <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg flex flex-col sm:flex-row items-center gap-4 shadow">
-          <div className="flex flex-row gap-2 w-full items-center">
-            <img src={bestOverallPlayer.profile_photo} alt={bestOverallPlayer.name} className="w-12 h-12 rounded-full object-cover border border-yellow-300" />
-            <div className="font-bold text-gray-800">{bestOverallPlayer.name}</div>
-          </div>
-
-          <div className="flex-1">
-            <div className="font-semibold text-yellow-700 text-sm">
-              Best Overall Performer of Month {getLastMatchMonth()}
+        <div className="w-full max-w-xl mx-auto mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg shadow-sm">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            {/* Player Info */}
+            <div className="flex flex-row gap-2 w-full items-center">
+              <img src={bestOverallPlayer.profile_photo} alt={bestOverallPlayer.name} className="w-12 h-12 rounded-full object-cover border border-yellow-300" />
+              <div className="font-bold text-gray-800">{bestOverallPlayer.name}</div>
             </div>
-            <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-yellow-700">{bestOverallPlayer.avg_enrich_mvp?.toFixed(4)}</span></div>
+
+            {/* Performer Details */}
+            <div className="flex-1 w-full">
+              <div className="font-semibold text-yellow-700 text-sm">
+                Best Overall Performer of Month {getLastMatchMonth()}
+              </div>
+              <div className="text-xs text-gray-500">Avg Enrich MVP: <span className="font-bold text-yellow-700">{bestOverallPlayer.avg_enrich_mvp?.toFixed(4)}</span></div>
+            </div>
           </div>
-          <div className="w-full flex justify-end">
-            {profileId !== String(bestOverallPlayer?.player_id) && 
-             (profileId === String(teamConfig?.ADMIN_PROFILE_ID) || teamConfig?.AWARD_NOW_VISIBLITY_PROFILE_ID.includes(Number(profileId))) && (
+          
+          {/* Action Buttons */}
+          <div className="mt-4 pt-4 border-t border-yellow-100 flex items-center justify-between">
+            <div>
               <button
-                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
-                onClick={async () => {
-                  if (window.confirm("Are you sure you want to award and clear all match data?")) {
-                    try {
-                      await post("/api/clear-matches", {});
-                      setShowAwardModal(true);
-                    } catch (err: any) {
-                      alert(err.message || "Failed to award player");
-                    }
-                  }
-                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
+                onClick={onShowAvgMvps}
               >
-                Award Now
+                View Avg MVPs
               </button>
-            )}
+            </div>
+
+            <div>
+              {profileId !== String(bestOverallPlayer?.player_id) && 
+              (profileId === String(teamConfig?.ADMIN_PROFILE_ID) || teamConfig?.AWARD_NOW_VISIBLITY_PROFILE_ID.includes(Number(profileId))) && (
+                <button
+                  className="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-4 py-2 rounded shadow text-xs"
+                  onClick={async () => {
+                    if (window.confirm("Are you sure you want to award and clear all match data?")) {
+                      try {
+                        await post("/api/clear-matches", {});
+                        setShowAwardModal(true);
+                      } catch (err: any) {
+                        alert(err.message || "Failed to award player");
+                      }
+                    }
+                  }}
+                >
+                  Award Now
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

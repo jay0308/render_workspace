@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
           if (!playerStats[key]) {
             playerStats[key] = { player: mvp, enrich_mvp_sum: 0, count: 0 };
           }
-          playerStats[key].enrich_mvp_sum += mvp.enrich_mvp ?? 0;
+          playerStats[key].enrich_mvp_sum += parseFloat(mvp.total) || 0;
           playerStats[key].count++;
         }
       }
@@ -67,27 +67,21 @@ export async function GET(req: NextRequest) {
     
     // Calculate averages and store them in a lookup map
     const playerAvgMap: Record<string, number> = {};
-    let bestOverallPlayer = null;
-    let bestAvg = -Infinity;
-    for (const [playerId, stat] of Object.entries(playerStats)) {
+    Object.values(playerStats).forEach(stat => {
       const avg = stat.count > 0 ? round4(stat.enrich_mvp_sum / stat.count) : 0;
-      playerAvgMap[playerId] = avg;
       stat.player.avg_enrich_mvp = avg;
-      if (avg > bestAvg) {
-        bestAvg = avg;
-        bestOverallPlayer = stat.player;
+      playerAvgMap[stat.player.player_id] = avg;
+    });
+
+    // Determine the best overall player based on match count and then average MVP
+    const sortedPlayers = Object.values(playerStats).sort((a, b) => {
+      if (b.count !== a.count) {
+        return b.count - a.count;
       }
-    }
-    
-    // Update ALL player instances across ALL matches with their avg_enrich_mvp
-    for (const match of filteredMatches) {
-      if (Array.isArray(match.counterstrikersMVPs)) {
-        for (const mvp of match.counterstrikersMVPs) {
-          const key = String(mvp.player_id);
-          mvp.avg_enrich_mvp = playerAvgMap[key] || 0;
-        }
-      }
-    }
+      return b.player.avg_enrich_mvp - a.player.avg_enrich_mvp;
+    });
+
+    const bestOverallPlayer = sortedPlayers.length > 0 ? sortedPlayers[0].player : null;
 
     return NextResponse.json({
       matches: filteredMatches,
