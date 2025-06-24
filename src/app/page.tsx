@@ -96,7 +96,7 @@ function HomeContent() {
                   });
                 }
                 const stats = playerStats.get(mvp.player_id)!;
-                stats.totalMvp += parseFloat(mvp.total);
+                stats.totalMvp += parseFloat(mvp.enrich_mvp);
                 stats.matchIds.add(match.matchId);
               });
             }

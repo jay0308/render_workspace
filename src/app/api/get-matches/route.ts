@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
           if (!playerStats[key]) {
             playerStats[key] = { player: mvp, enrich_mvp_sum: 0, count: 0 };
           }
-          playerStats[key].enrich_mvp_sum += parseFloat(mvp.total) || 0;
+          playerStats[key].enrich_mvp_sum += parseFloat(mvp.enrich_mvp) || 0;
           playerStats[key].count++;
         }
       }
