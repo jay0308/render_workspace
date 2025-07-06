@@ -16,6 +16,7 @@ import { TeamConfigProvider, useTeamConfig } from "../contexts/TeamConfigContext
 import { TeamStatsProvider } from "../contexts/TeamStatsContext";
 import { getConfigData } from "@/utils/JSONBlobUtils";
 import AvgMVPsModal from "@/components/AvgMVPsModal";
+import TeamFundsTab from "../components/TeamFundsTab";
 
 function HomeContent() {
   const [showModal, setShowModal] = useState(false);
@@ -37,7 +38,7 @@ function HomeContent() {
   const [rateCommentPrefill, setRateCommentPrefill] = useState<string | undefined>(undefined);
   const [showAwardModal, setShowAwardModal] = useState(false);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
-  const [activeTab, setActiveTab] = useState<'home' | 'team-stats' | 'team-info'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'team-stats' | 'team-info' | 'team-funds'>('home');
   const [showSubmitMatchStatsModal, setShowSubmitMatchStatsModal] = useState(false);
   const [submitMatchStatsError, setSubmitMatchStatsError] = useState("");
   const [submitMatchStatsLoading, setSubmitMatchStatsLoading] = useState(false);
@@ -241,6 +242,16 @@ function HomeContent() {
             >
               Team Info
             </button>
+            <button
+              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                activeTab === 'team-funds'
+                  ? 'border-teal-500 text-teal-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+              onClick={() => setActiveTab('team-funds')}
+            >
+              Team Funds
+            </button>
           </div>
         </div>
       </div>
@@ -273,6 +284,8 @@ function HomeContent() {
             {activeTab === 'team-stats' && <TeamStatsTab />}
             
             {activeTab === 'team-info' && <TeamInfoTab />}
+
+            {activeTab === 'team-funds' && <TeamFundsTab teamConfig={teamConfig} />}
           </>
         )}
       </main>
@@ -334,6 +347,17 @@ function HomeContent() {
           >
             <span className="text-lg">ℹ️</span>
             <span className="leading-none">Team Info</span>
+          </button>
+          <button
+            className={`flex-1 px-2 py-3 text-xs font-medium flex flex-col items-center justify-center gap-1 transition-all ${
+              activeTab === 'team-funds'
+                ? 'text-teal-600 bg-teal-50 border-t-2 border-teal-500'
+                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+            }`}
+            onClick={() => setActiveTab('team-funds')}
+          >
+            <span className="text-lg">💰</span>
+            <span className="leading-none">Team Funds</span>
           </button>
         </div>
       </div>

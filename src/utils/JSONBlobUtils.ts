@@ -3,13 +3,15 @@ const JSONBlobUrlBaseUrl = "https://jsonblob.com/api/jsonBlob/";
 export enum BlobType {
   MVP_DATA = 'MVP_DATA',
   CONFIG_DATA = 'CONFIG_DATA',
-  TEAM_STATS = 'TEAM_STATS'
+  TEAM_STATS = 'TEAM_STATS',
+  TEAM_FUN_DATA = 'TEAM_FUN_DATA'
 }
 
 const BLOB_IDS: Record<BlobType, string> = {
   [BlobType.MVP_DATA]: "1379082578547630080", // Current MVP data
   [BlobType.CONFIG_DATA]: "1381995549015859200", // Add your config blob ID here
   [BlobType.TEAM_STATS]: "1382061324179267584", // Add your team stats blob ID here
+  [BlobType.TEAM_FUN_DATA]: "1390752825298051072", // Add your team fun data blob ID here
 };
 
 export const getJSONBlobUrl = (blobType: BlobType) => {
@@ -61,6 +63,9 @@ export const updateConfigData = (data: any) => updateJSONBlob(BlobType.CONFIG_DA
 
 export const getTeamStats = () => getJSONBlob(BlobType.TEAM_STATS);
 export const updateTeamStats = (data: any) => updateJSONBlob(BlobType.TEAM_STATS, data);
+
+export const getTeamFunData = () => getJSONBlob(BlobType.TEAM_FUN_DATA);
+export const updateTeamFunData = (data: any) => updateJSONBlob(BlobType.TEAM_FUN_DATA, data);
 
 // Utility function to update blob IDs (for configuration purposes)
 export const setBlobId = (blobType: BlobType, blobId: string) => {

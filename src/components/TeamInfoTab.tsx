@@ -1,8 +1,18 @@
 import React from "react";
 import { useTeamConfig } from "../contexts/TeamConfigContext";
+import { useState } from "react";
+import ManageTeamMembersModal from "./ManageTeamMembersModal";
 
 const TeamInfoTab: React.FC = () => {
-  const { teamConfig, isLoading, error } = useTeamConfig();
+  const { teamConfig, isLoading, error, setTeamConfig } = useTeamConfig();
+  const [modalOpen, setModalOpen] = useState(false);
+
+  // Get current profile id from localStorage
+  let profileId: string | null = null;
+  if (typeof window !== "undefined") {
+    profileId = localStorage.getItem("cricheroes_profile_id");
+  }
+  const isAdmin = teamConfig && profileId && String(teamConfig.ADMIN_PROFILE_ID) === String(profileId);
 
   if (isLoading) {
     return (
@@ -24,6 +34,22 @@ const TeamInfoTab: React.FC = () => {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
+
+      {isAdmin && (
+              <button
+                className="fixed bottom-8 right-8 z-50 bg-teal-600 hover:bg-teal-700 text-white rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
+                title="Manage Team Members"
+                onClick={() => setModalOpen(true)}
+              >
+                +
+              </button>
+            )}
+            <ManageTeamMembersModal
+              isOpen={modalOpen}
+              onClose={() => setModalOpen(false)}
+              teamConfig={teamConfig}
+              setTeamConfig={setTeamConfig}
+            />
       {/* Batting Order Section */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="bg-teal-50 px-6 py-4 border-b border-teal-100">
