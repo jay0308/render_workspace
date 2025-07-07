@@ -106,18 +106,31 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     }
   };
 
-  const handleDeleteFund = async (fundId: string) => {
-    if (!window.confirm("Are you sure you want to delete this fund?")) return;
+  const handleDeleteFund = (fundId: string) => {
+    const fund = funds.find((f: any) => String(f.id) === String(fundId));
+    if (!fund) return;
+    // Find all players who paid
+    const amounts: Record<string, number> = {};
+    if (fund.payments) {
+      Object.entries(fund.payments).forEach(([pid, status]) => {
+        if (status === 'paid') {
+          amounts[pid] = Number(fund.amount) || 0;
+        }
+      });
+    }
+    setDeleteDialog({ fund, amounts });
+  };
+
+  const confirmDeleteFund = async () => {
+    if (!deleteDialog) return;
     try {
       setLoadingFunds(true);
-      const response: any = await post("/api/delete-fund", { id: fundId });
-      if (response && Array.isArray(response.funds)) {
-        setFunds(response.funds);
-      } else {
-        // fallback: refetch funds
-        const resp = await get<{ fundList: any[] }>("/api/get-funds");
-        setFunds(Array.isArray(resp?.fundList) ? resp.fundList : []);
-      }
+      await post("/api/delete-fund", { id: deleteDialog.fund.id, amounts: deleteDialog.amounts });
+      // Always refresh funds and balance after delete
+      const resp = await get<{ fundList: any[]; totalBalance?: number }>("/api/get-funds");
+      setFunds(Array.isArray(resp?.fundList) ? resp.fundList : []);
+      if (typeof resp.totalBalance === 'number') setTotalBalance(resp.totalBalance);
+      setDeleteDialog(null);
     } catch (e: any) {
       alert(e.message || "Failed to delete fund");
     } finally {
@@ -166,9 +179,9 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     });
     setPlayerPayments(
       Object.entries(playerMap)
-        .map(([playerId, data]) => ({ playerId, ...data }))
-        .filter(p => p.due > 0)
-        .sort((a, b) => b.due - a.due)
+        .map(([playerId, data]: [string, any]) => ({ playerId, ...data }))
+        .filter((p: any) => p.due > 0)
+        .sort((a: any, b: any) => b.due - a.due)
     );
   };
 
@@ -336,8 +349,19 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     </div>
   );
 
+  // State for delete fund confirmation dialog
+  const [deleteDialog, setDeleteDialog] = useState<null | { fund: any; amounts: Record<string, number> }> (null);
+
+  // Loader overlay
+  const LoaderOverlay = () => (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black bg-opacity-30">
+      <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
+    </div>
+  );
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
+      {loadingFunds && <LoaderOverlay />}
       {/* Player Payments CTA and WhatsApp share for admin/fund manager, now below total balance */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6 mb-4">
         <h2 className="text-2xl font-bold text-teal-800 mb-2">Team Funds</h2>
@@ -518,6 +542,49 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
             setEditingExpenseId(null);
           }}
         />
+      )}
+      {/* Delete Fund Confirmation Dialog */}
+      {deleteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md flex flex-col gap-4">
+            <div className="text-lg font-bold text-gray-800 mb-2">Delete Fund</div>
+            <div className="text-sm text-gray-700 mb-1">Are you sure you want to delete <span className="font-semibold">{deleteDialog.fund.description}</span>?</div>
+            <div className="text-sm text-gray-700 mb-2">Enter the amount to deduct for each player who paid:</div>
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+              {Object.entries(deleteDialog.amounts).map(([pid, amt]: [string, number]) => {
+                const player = allPlayers.find((p: any) => String(p.playerId) === String(pid));
+                return (
+                  <div key={pid} className="flex items-center gap-2">
+                    {player?.profileImage && (
+                      <img src={player.profileImage} alt={player.playerName} className="w-6 h-6 rounded-full object-cover border" />
+                    )}
+                    <span className="font-medium text-gray-800 flex-1">{player?.playerName || pid}</span>
+                    <input
+                      type="number"
+                      className="p-2 border border-gray-300 rounded text-gray-900 bg-white w-24"
+                      value={deleteDialog.amounts[pid]}
+                      min={0}
+                      onChange={e => {
+                        const val = Number(e.target.value);
+                        setDeleteDialog(d => d ? { ...d, amounts: { ...d.amounts, [pid]: val } } : d);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
+                onClick={() => setDeleteDialog(null)}
+              >Cancel</button>
+              <button
+                className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white font-semibold"
+                onClick={confirmDeleteFund}
+              >Delete</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
