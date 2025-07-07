@@ -1,4 +1,3 @@
-
 export const ContextualFactors = {
     CRITICAL_IMPACT:{
         name:"Wicket/Critical Run Impact",

@@ -3,7 +3,7 @@ import { getConfigData, getTeamFunData, updateTeamFunData } from "@/utils/JSONBl
 
 export async function POST(req: NextRequest) {
   try {
-    const { playerId, fundIds, status } = await req.json();
+    const { playerId, fundIds, status, amounts } = await req.json();
     if (!playerId || !Array.isArray(fundIds) || fundIds.length === 0 || (status !== 'paid' && status !== 'unpaid')) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
@@ -24,13 +24,14 @@ export async function POST(req: NextRequest) {
     let amountToDeduct = 0;
     const updatedList = fundList.map((fund: any) => {
       if (fundIds.includes(fund.id) && fund.payments && fund.payments[playerId] !== undefined) {
+        const updateAmount = (amounts && typeof amounts[fund.id] === 'number') ? amounts[fund.id] : (Number(fund.amount) || 0);
         // Add to totalBalance if marking as paid and previous status was unpaid
         if (fund.payments[playerId] === 'unpaid' && status === 'paid') {
-          amountToAdd += Number(fund.amount) || 0;
+          amountToAdd += updateAmount;
         }
         // Deduct from totalBalance if marking as unpaid and previous status was paid
         if (fund.payments[playerId] === 'paid' && status === 'unpaid') {
-          amountToDeduct += Number(fund.amount) || 0;
+          amountToDeduct += updateAmount;
         }
         return {
           ...fund,

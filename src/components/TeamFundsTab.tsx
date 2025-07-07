@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import AddFundModal from "./AddFundModal";
+import PaymentsModal from "./PaymentsModal";
+import PlayerPaymentsModal from "./PlayerPaymentsModal";
+import FundCard from "./FundCard";
+import AddExpenseModal from "./AddExpenseModal";
 import { post, get } from "../utils/request";
+import { calculatePenalty } from '../utils/commonUtils';
 
 interface TeamFundsTabProps {
   teamConfig: any;
@@ -43,6 +48,9 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
         isActive: m.isActive,
       }))
     : [];
+
+  // Get penalty amount per day from config
+  const PENALTY_AMOUNT_PER_DAY = Number(teamConfig?.PENALTY_AMOUNT_PER_DAY) || 0;
 
   // Fetch funds and totalBalance on mount or when modal closes
   useEffect(() => {
@@ -118,10 +126,10 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   };
 
   // Update totalBalance after payment status change
-  const handleStatusChange = async (playerId: string, newStatus: 'paid' | 'unpaid') => {
+  const handleStatusChange = async (playerId: string, newStatus: 'paid' | 'unpaid', amount?: number) => {
     try {
       setLoadingFunds(true);
-      const response: any = await post('/api/update-fund-payment', { fundId: selectedFund.id, playerId, status: newStatus });
+      const response: any = await post('/api/update-fund-payment', { fundId: selectedFund.id, playerId, status: newStatus, amount });
       if (response && Array.isArray(response.funds)) {
         setFunds(response.funds);
         if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
@@ -165,10 +173,10 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   };
 
   // Handler to mark all funds as paid for a player
-  const handleMarkAllPaid = async (playerId: string, fundIds: string[]) => {
+  const handleMarkAllPaid = async (playerId: string, fundIds: string[], amounts: Record<string, number>) => {
     setLoadingFunds(true);
     try {
-      const response: any = await post('/api/update-player-fund-payments', { playerId, fundIds, status: 'paid' });
+      const response: any = await post('/api/update-player-fund-payments', { playerId, fundIds, status: 'paid', amounts });
       setFunds(Array.isArray(response?.funds) ? response.funds : []);
       if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
       calculatePlayerPayments();
@@ -181,10 +189,10 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   };
 
   // Handler to mark all funds as unpaid for a player
-  const handleMarkAllUnpaid = async (playerId: string, fundIds: string[]) => {
+  const handleMarkAllUnpaid = async (playerId: string, fundIds: string[], amounts: Record<string, number>) => {
     setLoadingFunds(true);
     try {
-      const response: any = await post('/api/update-player-fund-payments', { playerId, fundIds, status: 'unpaid' });
+      const response: any = await post('/api/update-player-fund-payments', { playerId, fundIds, status: 'unpaid', amounts });
       setFunds(Array.isArray(response?.funds) ? response.funds : []);
       if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
       calculatePlayerPayments();
@@ -199,15 +207,16 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   // WhatsApp share for overall player dues
   const handleShareOverallDueWhatsapp = () => {
     let msg = '*Team Funds - Player Due Summary*\n';
-    const playerMap: Record<string, { playerName: string; due: number }> = {};
+    const playerMap: Record<string, { playerName: string; due: number; penalty: number }> = {};
     allPlayers.forEach((p: any) => {
-      playerMap[p.playerId] = { playerName: p.playerName, due: 0 };
+      playerMap[p.playerId] = { playerName: p.playerName, due: 0, penalty: 0 };
     });
     funds.forEach(fund => {
       if (fund.payments) {
         Object.entries(fund.payments).forEach(([pid, status]) => {
           if (status === 'unpaid' && playerMap[pid]) {
             playerMap[pid].due += Number(fund.amount) || 0;
+            playerMap[pid].penalty += calculatePenalty(fund, fund.dueDate, pid, PENALTY_AMOUNT_PER_DAY);
           }
         });
       }
@@ -220,7 +229,11 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
       msg += '\nNo dues for any player!';
     } else {
       dues.forEach(p => {
-        msg += `\n- ${p.playerName}: ₹${p.due}`;
+        if (p.penalty > 0) {
+          msg += `\n- ${p.playerName}: ₹${p.due + p.penalty} (Penalty: ₹${p.penalty})`;
+        } else {
+          msg += `\n- ${p.playerName}: ₹${p.due}`;
+        }
       });
     }
     const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
@@ -323,78 +336,6 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     </div>
   );
 
-  // AddExpenseModal as a top-level component with local state
-  interface AddExpenseModalProps {
-    initialData?: { description: string; amount: number } | null;
-    onSave: (data: { description: string; amount: number }) => void;
-    onCancel: () => void;
-    isEdit?: boolean;
-  }
-  const AddExpenseModal: React.FC<AddExpenseModalProps> = ({ initialData, onSave, onCancel, isEdit }) => {
-    const [description, setDescription] = React.useState(initialData?.description || "");
-    const [amount, setAmount] = React.useState(initialData?.amount?.toString() || "");
-    const [error, setError] = React.useState("");
-
-    const handleSave = () => {
-      setError("");
-      if (!description.trim()) {
-        setError("Description is required");
-        return;
-      }
-      if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-        setError("Enter a valid amount");
-        return;
-      }
-      onSave({ description: description.trim(), amount: Number(amount) });
-    };
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
-          <div className="flex-1 overflow-y-auto p-6">
-            <h2 className="text-xl font-bold text-blue-800 mb-4">{isEdit ? 'Modify Expense' : 'Add Expense'}</h2>
-            <div className="mb-4">
-              <label className="mb-1 font-medium text-gray-700 block">Description</label>
-              <input
-                className="p-2 border border-gray-300 rounded text-gray-900 bg-white w-full"
-                type="text"
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                placeholder="What is this expense for?"
-              />
-            </div>
-            <div className="mb-4">
-              <label className="mb-1 font-medium text-gray-700 block">Amount (₹)</label>
-              <input
-                className="p-2 border border-gray-300 rounded text-gray-900 bg-white w-full"
-                type="number"
-                min="1"
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="Enter amount"
-              />
-            </div>
-            {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
-          </div>
-          <div className="border-t bg-white px-6 py-4 flex justify-end gap-2 pb-32 md:pb-6" style={{ paddingBottom: 'max(3.5rem, env(safe-area-inset-bottom, 0px))', zIndex: 60 }}>
-            <button
-              className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
-              onClick={onCancel}
-            >
-              Cancel
-            </button>
-            <button
-              className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-              onClick={handleSave}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
       {/* Player Payments CTA and WhatsApp share for admin/fund manager, now below total balance */}
@@ -428,7 +369,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
       </div>
       {/* Separate Floating Action Buttons for Add Fund and Add Expense */}
       {(isAdmin || isFundManager) && (
-        <div className="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-4">
+        <div className="fixed bottom-20 right-8 z-50 flex flex-col items-end gap-4">
           {activeTab === 'funds' && (
             <button
               className="bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
@@ -482,18 +423,24 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                   currentPlayerId = localStorage.getItem("cricheroes_profile_id");
                 }
                 let totalDue = 0;
+                let totalPenalty = 0;
                 if (currentPlayerId) {
                   for (const fund of funds) {
                     if (fund.payments && fund.payments[currentPlayerId] === 'unpaid') {
-                      totalDue += Number(fund.amount) || 0;
+                      const penalty = calculatePenalty(fund, fund.dueDate, currentPlayerId, PENALTY_AMOUNT_PER_DAY);
+                      totalDue += Number(fund.amount) + penalty;
+                      totalPenalty += penalty;
                     }
                   }
                 }
                 if (totalDue > 0) {
                   return (
-                    <div className="mb-6 flex items-center justify-center">
-                      <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-3 rounded-xl text-lg font-bold flex items-center gap-2 shadow">
-                        <span>⚠️ Your Total Due:</span> <span>₹{totalDue}</span>
+                    <div className="mb-6 flex items-center justify-center w-full">
+                      <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-3 rounded-xl text-lg font-bold flex flex-col items-end gap-0 shadow">
+                        <span>⚠️ Your Total Due: ₹{totalDue}</span>
+                        {totalPenalty > 0 && (
+                          <span className="text-base font-normal text-red-600 pr-1">(Penalty: ₹{totalPenalty})</span>
+                        )}
                       </div>
                     </div>
                   );
@@ -510,6 +457,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                     onPayments={() => { setSelectedFund(fund); setShowPaymentsModal(true); }}
                     onModify={() => { setEditFund(fund); setShowModal(true); }}
                     onDelete={() => handleDeleteFund(fund.id)}
+                    penaltyPerDay={PENALTY_AMOUNT_PER_DAY}
                   />
                 ))}
               </div>
@@ -535,12 +483,18 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
           isFundManager={isFundManager}
           onClose={() => { setShowPaymentsModal(false); setSelectedFund(null); }}
           onStatusChange={handleStatusChange}
+          teamConfig={teamConfig}
+          calculatePenalty={(fund, dueDate, playerId) => calculatePenalty(fund, dueDate, playerId, PENALTY_AMOUNT_PER_DAY)}
         />
       )}
       {/* Player Payments Modal */}
       {showPlayerPaymentsModal && (
         <PlayerPaymentsModal
           playerPayments={playerPayments}
+          funds={funds}
+          penaltyPerDay={PENALTY_AMOUNT_PER_DAY}
+          isAdmin={isAdmin}
+          isFundManager={isFundManager}
           onClose={() => setShowPlayerPaymentsModal(false)}
           onMarkAllPaid={handleMarkAllPaid}
           onMarkAllUnpaid={handleMarkAllUnpaid}
@@ -565,240 +519,6 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
           }}
         />
       )}
-    </div>
-  );
-};
-
-// PaymentsModal component
-const PaymentsModal: React.FC<{
-  fund: any;
-  allPlayers: any[];
-  isAdmin: boolean;
-  isFundManager: boolean;
-  onClose: () => void;
-  onStatusChange: (playerId: string, newStatus: 'paid' | 'unpaid') => void;
-}> = ({ fund, allPlayers, isAdmin, isFundManager, onClose, onStatusChange }) => {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
-        <div className="flex-1 overflow-y-auto p-6">
-          <h2 className="text-xl font-bold text-teal-800 mb-4">Player Payments</h2>
-          <div className="mb-4 text-gray-700 font-medium">Fund: <span className="font-semibold">{fund.description}</span></div>
-          <div className="flex flex-col gap-2">
-            {Object.entries(fund.payments).map(([pid, status]) => {
-              const player = allPlayers.find((p: any) => String(p.playerId) === String(pid));
-              return (
-                <div key={pid} className="flex items-center gap-3 p-2 rounded border border-gray-200 bg-white">
-                  {player?.profileImage && (
-                    <img src={player.profileImage} alt={player.playerName} className="w-6 h-6 rounded-full object-cover border" />
-                  )}
-                  <span className="font-medium text-gray-800 flex-1">{player?.playerName || pid}</span>
-                  {/* Slide toggle for admins/fund managers */}
-                  {(isAdmin || isFundManager) ? (
-                    <label className="inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={status === 'paid'}
-                        onChange={() => onStatusChange(pid, status === 'paid' ? 'unpaid' : 'paid')}
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:bg-green-400 transition-all relative">
-                        <div className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${status === 'paid' ? 'translate-x-5' : ''}`}></div>
-                      </div>
-                      <span className={`ml-2 text-xs font-semibold ${status === 'paid' ? 'text-green-700' : 'text-yellow-700'}`}>{status === 'paid' ? 'Paid' : 'Unpaid'}</span>
-                    </label>
-                  ) : (
-                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-semibold ${status === 'paid' ? 'bg-green-100 text-green-700 border border-green-400' : 'bg-yellow-100 text-yellow-700 border border-yellow-400'}`}>{status === 'paid' ? 'Paid' : 'Unpaid'}</span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div className="border-t bg-white px-6 py-4 flex justify-end gap-2 pb-32 md:pb-6" style={{ paddingBottom: 'max(3.5rem, env(safe-area-inset-bottom, 0px))', zIndex: 60 }}>
-          <button
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// FundCard component
-const FundCard: React.FC<{
-  fund: any;
-  isAdmin: boolean;
-  isFundManager: boolean;
-  onPayments: () => void;
-  onModify: () => void;
-  onDelete: () => void;
-}> = ({ fund, isAdmin, isFundManager, onPayments, onModify, onDelete }) => {
-  // Get all players from fund context (for WhatsApp share)
-  const allPlayers = fund.allPlayers || [];
-  // Compose WhatsApp message
-  const getWhatsappMessage = React.useCallback(() => {
-    let msg = `*${fund.description}*\n`;
-    msg += `Amount: ₹${fund.amount}\n`;
-    msg += `Due Date: ${fund.dueDate}\n`;
-    msg += `\n*Players Payment Status:*\n`;
-    if (fund.payments) {
-      Object.entries(fund.payments).forEach(([pid, status]: any) => {
-        const player = allPlayers.find((p: any) => String(p.playerId) === String(pid));
-        const name = player?.playerName || pid;
-        msg += `- ${name}: ${status === 'paid' ? '✅ Paid' : '❌ Unpaid'}\n`;
-      });
-    }
-    return msg;
-  }, [fund, allPlayers]);
-
-  const handleWhatsappShare = () => {
-    const msg = getWhatsappMessage();
-    const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
-    window.open(url, '_blank');
-  };
-
-  // Get current playerId from localStorage
-  let currentPlayerId: string | null = null;
-  if (typeof window !== "undefined") {
-    currentPlayerId = localStorage.getItem("cricheroes_profile_id");
-  }
-  // Determine payment status for current player
-  let cardBg = "bg-white";
-  let borderColor = "border-gray-100";
-  let showDue = false;
-  if (currentPlayerId && fund.payments && fund.payments[currentPlayerId]) {
-    const status = fund.payments[currentPlayerId];
-    if (status === "paid") {
-      cardBg = "bg-green-50";
-      borderColor = "border-green-600";
-    } else {
-      // Not paid, check due date
-      const today = new Date();
-      const dueDate = fund.dueDate ? new Date(fund.dueDate) : null;
-      if (dueDate && today > dueDate) {
-        cardBg = "bg-red-50";
-        borderColor = "border-red-600";
-      } else {
-        cardBg = "bg-orange-50";
-        borderColor = "border-orange-500";
-      }
-      showDue = true;
-    }
-  }
-
-  return (
-    <div className={`rounded-xl shadow-md ${cardBg} p-5 mb-6 border-2 ${borderColor}`}>
-      <div className="mb-4">
-        <div className="text-xl font-bold text-teal-800">{fund.description}</div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-gray-700 font-medium">Amount:</span>
-          <span className="font-bold text-green-600 text-lg">₹{fund.amount}</span>
-        </div>
-        <div className="flex items-center gap-2 mt-1">
-          <span className="text-gray-700 font-medium">Due:</span>
-          <span className="text-gray-600">{fund.dueDate}</span>
-        </div>
-        <div className="text-xs text-gray-400 mt-1">
-          Created: {fund.createdDate ? new Date(fund.createdDate).toLocaleString() : "-"}
-        </div>
-      </div>
-      {(isAdmin || isFundManager) && (
-        <div className="flex flex-col md:flex-row gap-2 mt-4">
-          <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
-            onClick={handleWhatsappShare}
-            title="Share on WhatsApp"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.72 13.06a4.5 4.5 0 00-1.27-1.27c-.2-.13-.44-.18-.67-.13-.23.05-.44.2-.57.4l-.3.5a.75.75 0 01-.97.32 7.5 7.5 0 01-3.3-3.3.75.75 0 01.32-.97l.5-.3c.2-.13.35-.34.4-.57.05-.23 0-.47-.13-.67a4.5 4.5 0 00-1.27-1.27c-.2-.13-.44-.18-.67-.13-.23.05-.44.2-.57.4l-.3.5a1.75 1.75 0 00-.18 1.6c.7 1.7 2.1 3.1 3.8 3.8.2.08.42.06.6-.06l.5-.3c.2-.13.44-.18.67-.13.23.05.44.2.57.4l.3.5c.13.2.18.44.13.67-.05.23-.2.44-.4.57z" /></svg>
-            Share
-          </button>
-          <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold shadow transition"
-            onClick={onPayments}
-          >
-            <span>💸</span> Payments
-          </button>
-          <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
-            onClick={onModify}
-          >
-            <span>✏️</span> Modify
-          </button>
-          <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-600 text-red-700 bg-white hover:bg-red-50 font-semibold shadow transition"
-            onClick={onDelete}
-          >
-            <span>🗑️</span> Delete
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// PlayerPaymentsModal component
-const PlayerPaymentsModal: React.FC<{
-  playerPayments: { playerId: string; playerName: string; profileImage?: string; due: number; fundIds: string[] }[];
-  onClose: () => void;
-  onMarkAllPaid: (playerId: string, fundIds: string[]) => void;
-  onMarkAllUnpaid: (playerId: string, fundIds: string[]) => void;
-  loading: boolean;
-}> = ({ playerPayments, onClose, onMarkAllPaid, onMarkAllUnpaid, loading }) => {
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
-        <div className="flex-1 overflow-y-auto p-6">
-          <h2 className="text-xl font-bold text-orange-800 mb-4">Player Due Payments</h2>
-          {playerPayments.length === 0 ? (
-            <div className="text-gray-500 text-center py-8">No dues for any player!</div>
-          ) : (
-            <div className="space-y-3">
-              {playerPayments.map(player => (
-                <div key={player.playerId} className="flex items-center gap-4 p-3 border rounded bg-orange-50">
-                  {player.profileImage && (
-                    <img src={player.profileImage} alt={player.playerName} className="w-8 h-8 rounded-full object-cover border" />
-                  )}
-                  <span className="font-semibold text-gray-800 flex-1">{player.playerName}</span>
-                  <span className="font-bold text-orange-700 text-lg">₹{player.due}</span>
-                  <label className="inline-flex items-center cursor-pointer ml-4">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={player.due === 0}
-                      disabled={loading}
-                      onChange={async (e) => {
-                        if (e.target.checked) {
-                          // Mark all as paid
-                          await onMarkAllPaid(player.playerId, player.fundIds);
-                        } else {
-                          // Mark all as unpaid
-                          await onMarkAllUnpaid(player.playerId, player.fundIds);
-                        }
-                      }}
-                    />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:bg-green-400 transition-all relative">
-                      <div className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${player.due === 0 ? 'translate-x-5' : ''}`}></div>
-                    </div>
-                    <span className={`ml-2 text-xs font-semibold ${player.due === 0 ? 'text-green-700' : 'text-yellow-700'}`}>{player.due === 0 ? 'All Paid' : 'Due'}</span>
-                  </label>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="border-t bg-white px-6 py-4 flex justify-end gap-2 pb-32 md:pb-6" style={{ paddingBottom: 'max(3.5rem, env(safe-area-inset-bottom, 0px))', zIndex: 60 }}>
-          <button
-            className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
-            onClick={onClose}
-          >
-            Close
-          </button>
-        </div>
-      </div>
     </div>
   );
 };

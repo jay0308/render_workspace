@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       // Create new fund with unique id
       const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
       const payments: Record<string, 'paid' | 'unpaid'> = {};
-      (Array.isArray(fund.players) ? fund.players : []).forEach(pid => { payments[pid] = 'unpaid'; });
+      (Array.isArray(fund.players) ? fund.players : []).forEach((pid: any) => { payments[pid] = 'unpaid'; });
       newFund = { ...fund, createdDate, id: uniqueId, payments };
       updatedList = [newFund, ...fundList];
     }
