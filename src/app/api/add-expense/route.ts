@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
     const fundBlob = await getTeamFunData();
     const expenseList = Array.isArray(fundBlob?.expenseList) ? fundBlob.expenseList : [];
     let totalBalance = typeof fundBlob?.totalBalance === 'number' ? fundBlob.totalBalance : 0;
+    let totalExpense = typeof fundBlob?.totalExpense === 'number' ? fundBlob.totalExpense : 0;
     // Create new expense
     const newExpense = {
       id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(),
@@ -28,9 +29,11 @@ export async function POST(req: NextRequest) {
     const updatedExpenseList = [newExpense, ...expenseList];
     // Deduct from total balance
     totalBalance -= Number(amount);
+    // Increment totalExpense
+    totalExpense += Number(amount);
     // Save
-    await updateTeamFunData({ ...fundBlob, expenseList: updatedExpenseList, totalBalance });
-    return NextResponse.json({ success: true, expenseList: updatedExpenseList, totalBalance });
+    await updateTeamFunData({ ...fundBlob, expenseList: updatedExpenseList, totalBalance, totalExpense });
+    return NextResponse.json({ success: true, expenseList: updatedExpenseList, totalBalance, totalExpense });
   } catch (error) {
     console.error("Error adding expense:", error);
     return NextResponse.json({ error: "Failed to add expense" }, { status: 500 });

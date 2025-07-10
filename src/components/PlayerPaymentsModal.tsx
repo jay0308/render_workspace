@@ -124,7 +124,7 @@ const PlayerPaymentsModal: React.FC<PlayerPaymentsModalProps> = ({
 
       {/* Confirm Dialog */}
       {confirmDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-99">
           <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-xs flex flex-col gap-4">
             <div className="text-lg font-bold text-gray-800 mb-2">Amount to be updated</div>
             <div className="text-sm text-gray-700 mb-1">Player: <span className="font-semibold">{confirmDialog.playerName}</span></div>

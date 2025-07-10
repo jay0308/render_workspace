@@ -34,6 +34,8 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
 
   // Total balance state, fetched from backend
   const [totalBalance, setTotalBalance] = useState(0);
+  // Add totalExpense state
+  const [totalExpense, setTotalExpense] = useState(0);
 
   const [activeTab, setActiveTab] = useState<'funds' | 'expenses' | 'match-expenses'>('funds');
   const [showModal, setShowModal] = useState(false);
@@ -65,6 +67,9 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   // Add state for PlayersExpensesModal
   const [showPlayersExpensesModal, setShowPlayersExpensesModal] = useState(false);
   const [selectedMatchExpense, setSelectedMatchExpense] = useState<any | null>(null);
+
+  // Add loader state for expenses
+  const [loadingExpenses, setLoadingExpenses] = useState(false);
 
   // Get all players from config
   const allPlayers = Array.isArray(teamConfig?.teamMembers)
@@ -101,9 +106,10 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   useEffect(() => {
     const fetchExpenses = async () => {
       try {
-        const response = await get<{ expenseList: any[]; totalBalance?: number }>("/api/get-expenses");
+        const response = await get<{ expenseList: any[]; totalBalance?: number; totalExpense?: number }>("/api/get-expenses");
         setExpenses(Array.isArray(response?.expenseList) ? response.expenseList : []);
         if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
+        if (typeof response.totalExpense === 'number') setTotalExpense(response.totalExpense);
       } catch (e) {
         setExpenses([]);
       }
@@ -317,13 +323,33 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   const handleDeleteExpense = async (expenseId: string, amount: number) => {
     if (!window.confirm('Delete this expense?')) return;
     try {
+      setLoadingExpenses(true);
       const response: any = await post('/api/delete-expense', { id: expenseId, amount });
       if (response && Array.isArray((response as any).expenseList)) {
         setExpenses((response as any).expenseList);
         if (typeof (response as any).totalBalance === 'number') setTotalBalance((response as any).totalBalance);
+        if (typeof (response as any).totalExpense === 'number') setTotalExpense((response as any).totalExpense);
       }
     } catch (e) {
       alert('Failed to delete expense');
+    } finally {
+      setLoadingExpenses(false);
+    }
+  };
+
+  // Add clear expense handler
+  const handleClearExpense = async (expenseId: string) => {
+    if (!window.confirm('Clear this expense? This will just remove the card and not affect totals.')) return;
+    try {
+      setLoadingExpenses(true);
+      const response: any = await post('/api/delete-expense', { id: expenseId, clearOnly: true });
+      if (response && Array.isArray((response as any).expenseList)) {
+        setExpenses((response as any).expenseList);
+      }
+    } catch (e) {
+      alert('Failed to clear expense');
+    } finally {
+      setLoadingExpenses(false);
     }
   };
 
@@ -339,6 +365,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   // Update handleAddExpenseSave to handle edit, now receives data from modal
   const handleAddExpenseSave = async ({ description, amount, id }: { description: string; amount: number; id?: string }) => {
     try {
+      setLoadingExpenses(true);
       let response: any;
       if (id) {
         response = await post("/api/modify-expense", { id, description, amount });
@@ -348,11 +375,14 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
       if (response && Array.isArray((response as any).expenseList)) {
         setExpenses((response as any).expenseList);
         if (typeof (response as any).totalBalance === 'number') setTotalBalance((response as any).totalBalance);
+        if (typeof (response as any).totalExpense === 'number') setTotalExpense((response as any).totalExpense);
       }
       setShowExpenseModal(false);
       setEditingExpenseId(null);
     } catch (e: any) {
       alert(e.message || "Failed to save expense");
+    } finally {
+      setLoadingExpenses(false);
     }
   };
 
@@ -422,20 +452,20 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
       {expenses.map(expense => (
         <div key={expense.id} className="rounded-xl shadow-md bg-white p-5 mb-6 border border-gray-100">
           <div className="mb-4">
-            <div className="text-xl font-bold text-teal-800">{expense.description}</div>
+            <div className="text-xl font-bold text-blue-800">{expense.description}</div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-gray-700 font-medium">Amount:</span>
-              <span className="font-bold text-green-600 text-lg">₹{expense.amount}</span>
+              <span className="font-bold text-blue-600 text-lg">₹{expense.amount}</span>
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-gray-700 font-medium">Date:</span>
-              <span className="text-gray-600">{new Date(expense.createdDate).toLocaleDateString()}</span>
+              <span className="text-gray-600">{expense.createdDate ? new Date(expense.createdDate).toLocaleDateString() : '-'}</span>
             </div>
           </div>
           {(isAdmin || isFundManager) && (
-            <div className="flex flex-col md:flex-row gap-2 mt-4">
+            <div className="grid grid-cols-2 gap-3 mt-4">
               <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
                 onClick={() => handleShareExpense(expense)}
                 title="Share on WhatsApp"
               >
@@ -443,21 +473,28 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                 Share
               </button>
               <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
                 onClick={() => handleModifyExpense(expense)}
               >
                 <span>✏️</span> Modify
               </button>
               <button
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-600 text-red-700 bg-white hover:bg-red-50 font-semibold shadow transition"
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-600 text-red-700 bg-white hover:bg-red-50 font-semibold shadow transition"
                 onClick={() => handleDeleteExpense(expense.id, expense.amount)}
               >
                 <span>🗑️</span> Delete
+              </button>
+              <button
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-700 bg-white hover:bg-gray-50 font-semibold shadow transition"
+                onClick={() => handleClearExpense(expense.id)}
+              >
+                <span>🧹</span> Clear
               </button>
             </div>
           )}
         </div>
       ))}
+      {loadingExpenses && <LoaderOverlay />}
     </div>
   );
 
@@ -577,6 +614,22 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                     <span className="text-gray-400 text-xs">Created at: {new Date(expense.createdDate).toLocaleString()}</span>
                   </div>
                 )}
+
+              {/* After the main card info in renderMatchExpenses, show payment status for admin/fund manager */}
+              {(isAdmin || isMatchFundManager) && expense.playersExpensesDetails && Array.isArray(expense.playersExpensesDetails.summary) && (() => {
+                const summary = expense.playersExpensesDetails.summary;
+                const total = summary.length;
+                const paid = summary.filter((s: any) => (s.net >= 0 || s.settled)).length;
+                const unpaid = total - paid;
+                if (total === 0) return null;
+                if (paid === total) {
+                  return <div className="mt-2 text-green-700 font-semibold text-sm">Everybody has paid, please settle up</div>;
+                } else if (paid / total <= 0.5) {
+                  return <div className="mt-2 text-red-600 font-semibold text-sm">Only {paid} have paid</div>;
+                } else {
+                  return <div className="mt-2 text-orange-600 font-semibold text-sm">Only {unpaid} are left</div>;
+                }
+              })()}
                 {canManageMatchFunds && (
                   <div className="grid grid-cols-2 gap-3 mt-4">
                     <button
@@ -659,6 +712,8 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
         <h2 className="text-2xl font-bold text-teal-800 mb-2">Team Funds</h2>
         <div className="text-lg font-semibold text-gray-700 mb-1">Total Balance Fund</div>
         <div className={`text-3xl font-bold mb-2 ${totalBalance < 0 ? 'text-red-600' : 'text-green-600'}`}>₹ {totalBalance}</div>
+        <div className="text-lg font-semibold text-gray-700 mb-1 mt-2">Total Expenses</div>
+        <div className="text-3xl font-bold mb-2 text-orange-600">₹ {totalExpense}</div>
         {(isAdmin || isFundManager) && (
           <div className="flex flex-col gap-3 mt-2">
             <button

@@ -121,6 +121,21 @@ const FundCard: React.FC<FundCardProps> = ({ fund, isAdmin, isFundManager, onPay
           Created: {fund.createdDate ? new Date(fund.createdDate).toLocaleString() : "-"}
         </div>
       </div>
+      {(isAdmin || isFundManager) && fund.payments && (
+        (() => {
+          const total = Object.keys(fund.payments).length;
+          const paid = Object.values(fund.payments).filter((v: any) => v === 'paid').length;
+          const unpaid = total - paid;
+          if (total === 0) return null;
+          if (paid === total) {
+            return <div className="mt-2 text-green-700 font-semibold text-sm">Everybody has paid, please settle up</div>;
+          } else if (paid / total <= 0.5) {
+            return <div className="mt-2 text-red-600 font-semibold text-sm">Only {paid} have paid</div>;
+          } else {
+            return <div className="mt-2 text-orange-600 font-semibold text-sm">Only {unpaid} are left</div>;
+          }
+        })()
+      )}
       {(isAdmin || isFundManager) && (
         <div className="grid grid-cols-2 gap-3 mt-4">
           <button
