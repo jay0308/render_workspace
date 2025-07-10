@@ -16,3 +16,11 @@ export const ContextualFactors = {
         description:"Was it against strong opposition?"
     }
 }
+
+export const FOOD_MENU = [
+  { name: 'maggi', price: 40 },
+  { name: 'chai', price: 20 },
+  { name: 'regular omlette', price: 50 },
+  { name: '4 egg omlette', price: 100 },
+  { name: 'mathhi', price: 5 },
+];

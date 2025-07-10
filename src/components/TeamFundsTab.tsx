@@ -4,8 +4,12 @@ import PaymentsModal from "./PaymentsModal";
 import PlayerPaymentsModal from "./PlayerPaymentsModal";
 import FundCard from "./FundCard";
 import AddExpenseModal from "./AddExpenseModal";
+import AddMatchExpenseModal from "./AddMatchExpenseModal";
 import { post, get } from "../utils/request";
 import { calculatePenalty } from '../utils/commonUtils';
+import TickAnimationModal from './TickAnimationModal';
+import DeleteFundDialog from "./DeleteFundDialog";
+import PlayersExpensesModal from "./PlayersExpensesModal";
 
 interface TeamFundsTabProps {
   teamConfig: any;
@@ -20,10 +24,18 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   const isAdmin = teamConfig && profileId && String(teamConfig.ADMIN_PROFILE_ID) === String(profileId);
   const isFundManager = teamConfig && profileId && String(teamConfig.FUND_MANAGER_PROFILE_ID) === String(profileId);
 
+  // Permission: admin or match fund manager
+  const isMatchFundManager = teamConfig && profileId && (
+    (Array.isArray(teamConfig.MATCH_FUND_MANAGER_PROFILE_ID)
+      ? teamConfig.MATCH_FUND_MANAGER_PROFILE_ID.map(String).includes(String(profileId))
+      : String(teamConfig.MATCH_FUND_MANAGER_PROFILE_ID) === String(profileId))
+  );
+  const canManageMatchFunds = isAdmin || isMatchFundManager;
+
   // Total balance state, fetched from backend
   const [totalBalance, setTotalBalance] = useState(0);
 
-  const [activeTab, setActiveTab] = useState<'funds' | 'expenses'>('funds');
+  const [activeTab, setActiveTab] = useState<'funds' | 'expenses' | 'match-expenses'>('funds');
   const [showModal, setShowModal] = useState(false);
   const [funds, setFunds] = useState<any[]>([]);
   const [loadingFunds, setLoadingFunds] = useState(false);
@@ -38,6 +50,21 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
   // Expense modal state
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [expenses, setExpenses] = useState<any[]>([]);
+
+  // Add state for match expense modal
+  const [showMatchExpenseModal, setShowMatchExpenseModal] = useState(false);
+
+  // Add match expenses state
+  const [matchExpenseList, setMatchExpenseList] = useState<any[]>([]);
+  // Animation modal state
+  const [showSettleAnimation, setShowSettleAnimation] = useState(false);
+  const [settleMessage, setSettleMessage] = useState("");
+  // Edit modal state
+  const [editingMatchExpense, setEditingMatchExpense] = useState<any | null>(null);
+
+  // Add state for PlayersExpensesModal
+  const [showPlayersExpensesModal, setShowPlayersExpensesModal] = useState(false);
+  const [selectedMatchExpense, setSelectedMatchExpense] = useState<any | null>(null);
 
   // Get all players from config
   const allPlayers = Array.isArray(teamConfig?.teamMembers)
@@ -81,8 +108,24 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
         setExpenses([]);
       }
     };
+    console.log("showExpenseModal", showExpenseModal);
     fetchExpenses();
   }, [showExpenseModal]);
+
+  // Fetch match expenses on mount and after add/modify/delete
+  const fetchMatchExpenses = async () => {
+    try {
+      const response = await get<{ matchExpenseList: any[] }>("/api/get-match-expenses");
+      setMatchExpenseList(Array.isArray(response?.matchExpenseList) ? response.matchExpenseList : []);
+    } catch (e) {
+      setMatchExpenseList([]);
+    }
+  };
+  useEffect(() => {
+    if (!showMatchExpenseModal) {
+      fetchMatchExpenses();
+    }
+  }, [showMatchExpenseModal]);
 
   const handleAddFundSave = async (data: { description: string; amount: number; dueDate: string; players: string[]; id?: string }) => {
     try {
@@ -303,6 +346,65 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     }
   };
 
+  // Handler to add match expense
+  const handleAddMatchExpenseSave = async (data: any) => {
+    try {
+      setLoadingFunds(true);
+      const response: any = await post("/api/add-match-expense", data);
+      if (response && Array.isArray(response.matchExpenseList)) {
+        setMatchExpenseList(response.matchExpenseList);
+        if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
+      } else {
+        await fetchMatchExpenses();
+      }
+      setShowMatchExpenseModal(false);
+    } catch (e: any) {
+      alert(e.message || "Failed to add match expense");
+    } finally {
+      setLoadingFunds(false);
+    }
+  };
+
+  // Handler to modify match expense
+  const handleModifyMatchExpenseSave = async (data: any) => {
+    try {
+      setLoadingFunds(true);
+      const response: any = await post("/api/modify-match-expense", data);
+      if (response && Array.isArray(response.matchExpenseList)) {
+        setMatchExpenseList(response.matchExpenseList);
+        if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
+      } else {
+        await fetchMatchExpenses();
+      }
+      setEditingMatchExpense(null);
+    } catch (e: any) {
+      alert(e.message || "Failed to modify match expense");
+    } finally {
+      setLoadingFunds(false);
+    }
+  };
+
+  // Handler to settle up (delete) match expense
+  const handleSettleUpMatchExpense = async (expense: any) => {
+    if (!window.confirm('Are you sure you want to settle up this expense?')) return;
+    try {
+      setLoadingFunds(true);
+      const response: any = await post("/api/delete-match-expense", { id: expense.id });
+      if (response && Array.isArray(response.matchExpenseList)) {
+        setMatchExpenseList(response.matchExpenseList);
+        if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
+      } else {
+        await fetchMatchExpenses();
+      }
+      setSettleMessage("Expense Settled Up!");
+      setShowSettleAnimation(true);
+    } catch (e: any) {
+      alert(e.message || "Failed to settle up expense");
+    } finally {
+      setLoadingFunds(false);
+    }
+  };
+
   // Render expenses in All Expenses tab
   const renderExpenses = () => (
     <div className="space-y-6 mt-4">
@@ -349,6 +451,180 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     </div>
   );
 
+  // Render match expenses
+  const renderMatchExpenses = () => {
+    // At the top of the match expenses section, before rendering cards, show total due if needed
+    let totalUserDue = 0;
+    let dueCount = 0;
+    if (profileId && matchExpenseList.length > 2) {
+      matchExpenseList.forEach(expense => {
+        if (expense.playersExpensesDetails && expense.playersExpensesDetails.summary) {
+          const userSummary = expense.playersExpensesDetails.summary.find((s: any) => String(s.id) === String(profileId));
+          if (userSummary && userSummary.net < 0) {
+            totalUserDue += -userSummary.net;
+            dueCount++;
+          }
+        }
+      });
+    }
+    return (
+      <div className="space-y-6 mt-4">
+        {/* Total Due Summary Box */}
+        {dueCount > 1 && (
+          <div className="mb-4 flex items-center justify-center w-full">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-3 rounded-xl text-lg font-bold flex flex-col items-end gap-0 shadow">
+              <span>⚠️ Your Total Due: ₹{totalUserDue.toFixed(2)}</span>
+            </div>
+          </div>
+        )}
+        {matchExpenseList.length === 0 && <div className="text-gray-500 text-center">No match expenses yet.</div>}
+        {matchExpenseList.map(expense => {
+          // Find user summary if available
+          let userSummary = null;
+          if (expense.playersExpensesDetails && profileId) {
+            userSummary = (expense.playersExpensesDetails.summary || []).find((s: any) => String(s.id) === String(profileId));
+          }
+          // Calculate due date and payment status
+          const dueDate = expense.dueDate ? new Date(expense.dueDate) : null;
+          const now = new Date();
+          let badge = null;
+          if (userSummary) {
+            const isPaid = userSummary.net >= 0;
+            let badgeColor = '';
+            let badgeText = '';
+            if (!isPaid && dueDate && now > dueDate) {
+              badgeColor = 'bg-red-600 text-white';
+              badgeText = `Due: ₹${(-userSummary.net).toFixed(2)} (Overdue)`;
+            } else if (!isPaid && dueDate && now <= dueDate) {
+              badgeColor = 'bg-orange-500 text-white';
+              badgeText = `Due: ₹${(-userSummary.net).toFixed(2)}`;
+            } else if (isPaid) {
+              badgeColor = 'bg-green-600 text-white';
+              badgeText = 'Paid';
+            }
+            badge = (
+              <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ml-2 ${badgeColor}`}>{badgeText}</span>
+            );
+          }
+          // Check if the logged-in user is paid or settled up for this match expense
+          let isPaid = false;
+          let isSettled = false;
+          if (expense.playersExpensesDetails) {
+            const { participants = [], tempPlayers = [] } = expense.playersExpensesDetails;
+            const all = [...participants, ...tempPlayers];
+            isSettled = all.some((p: any) => String(p.id) === String(profileId) && p.settled === true);
+            isPaid = all.some((p: any) => String(p.id) === String(profileId) && p.paid && Number(p.paid) >= (p.totalOwed || 0));
+          }
+          // Only show due badge if NOT paid and NOT settled
+          const showDueBadge = !isPaid && !isSettled;
+          return (
+            <div key={expense.id} className="rounded-xl shadow-md bg-white p-5 mb-6 border border-gray-100">
+              <div className="mb-4">
+                <div className="text-xl font-bold text-orange-800 flex items-center">
+                  {expense.description}
+                  {showDueBadge && badge}
+                  {(isPaid || isSettled) && (
+                    <span className="ml-3 px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold border border-green-300">Paid</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-gray-700 font-medium">Match Fees:</span>
+                  <span className="font-bold text-orange-600 text-lg">₹{expense.matchFees || expense.amount}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-gray-700 font-medium">Due Date:</span>
+                  <span className="text-gray-600">{expense.dueDate ? new Date(expense.dueDate).toLocaleDateString() : '-'}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-gray-700 font-medium">Paid By:</span>
+                  <span className="text-gray-800 font-semibold">{(() => {
+                    const player = allPlayers.find((p: any) => p.playerId === expense.paidBy);
+                    return player ? player.playerName : expense.paidBy || '-';
+                  })()}</span>
+                </div>
+                {/* Food Bill Paid By */}
+                {expense.foodPaidBy && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-gray-700 font-medium">Food Bill Paid By:</span>
+                    <span className="text-gray-800 font-semibold">{(() => {
+                      const player = allPlayers.find((p: any) => p.playerId === expense.foodPaidBy);
+                      return player ? player.playerName : expense.foodPaidBy;
+                    })()}</span>
+                  </div>
+                )}
+                {/* Food Bill as one blue line */}
+                {expense.playersExpensesDetails && expense.playersExpensesDetails.paidAmount > 0 && (
+                  <div className="mt-1 text-blue-700 font-semibold text-sm">
+                    Food Bill: ₹{expense.playersExpensesDetails.paidAmount} paid by {(() => {
+                      const player = allPlayers.find((p: any) => p.playerId === expense.playersExpensesDetails.payerId);
+                      return player ? player.playerName : expense.playersExpensesDetails.payerId || '-';
+                    })()}
+                  </div>
+                )}
+                {/* Created Date in light text */}
+                {expense.createdDate && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-gray-400 text-xs">Created at: {new Date(expense.createdDate).toLocaleString()}</span>
+                  </div>
+                )}
+                {canManageMatchFunds && (
+                  <div className="flex flex-col md:flex-row gap-2 mt-4">
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-orange-600 text-orange-700 bg-white hover:bg-orange-50 font-semibold shadow transition"
+                      onClick={() => { setSelectedMatchExpense(expense); setShowPlayersExpensesModal(true); }}
+                    >
+                      <span>👥</span> Players Expenses
+                    </button>
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
+                      onClick={() => setEditingMatchExpense(expense)}
+                    >
+                      <span>✏️</span> Modify
+                    </button>
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
+                      onClick={() => {
+                        // Build share message
+                        let msg = `Match Expense: ${expense.description}\n`;
+                        msg += `Match Fees: ₹${expense.matchFees || expense.amount}\n`;
+                        if (expense.playersExpensesDetails && expense.playersExpensesDetails.paidAmount > 0) {
+                          const payer = allPlayers.find((p: any) => p.playerId === expense.playersExpensesDetails.payerId);
+                          msg += `Food Bill: ₹${expense.playersExpensesDetails.paidAmount} paid by ${payer ? payer.playerName : expense.playersExpensesDetails.payerId}\n`;
+                        }
+                        msg += `Due Date: ${expense.dueDate ? new Date(expense.dueDate).toLocaleDateString() : '-'}\n`;
+                        // List players who owe (net < 0 and not settled)
+                        if (expense.playersExpensesDetails && Array.isArray(expense.playersExpensesDetails.summary)) {
+                          const owingPlayers = expense.playersExpensesDetails.summary.filter((s: any) => s.net < 0 && !s.settled);
+                          if (owingPlayers.length > 0) {
+                            msg += `\nPlayers with Due:\n`;
+                            owingPlayers.forEach((s: any) => {
+                              msg += `- ${s.name} (₹${(-s.net).toFixed(2)})\n`;
+                            });
+                          }
+                        }
+                        const url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+                        window.open(url, '_blank');
+                      }}
+                      title="Share on WhatsApp"
+                    >
+                      <span>🔗</span> Share
+                    </button>
+                    <button
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-700 bg-white hover:bg-gray-50 font-semibold shadow transition"
+                      onClick={() => handleSettleUpMatchExpense(expense)}
+                    >
+                      <span>✅</span> Settled Up
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   // State for delete fund confirmation dialog
   const [deleteDialog, setDeleteDialog] = useState<null | { fund: any; amounts: Record<string, number> }> (null);
 
@@ -358,6 +634,12 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
       <div className="w-16 h-16 border-4 border-teal-400 border-t-transparent rounded-full animate-spin"></div>
     </div>
   );
+
+  // Add a handler to close PlayersExpensesModal and refetch match expenses
+  const handleClosePlayersExpensesModal = useCallback(() => {
+    setShowPlayersExpensesModal(false);
+    fetchMatchExpenses();
+  }, []);
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-8">
@@ -392,7 +674,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
         )}
       </div>
       {/* Separate Floating Action Buttons for Add Fund and Add Expense */}
-      {(isAdmin || isFundManager) && (
+      {(isAdmin || isMatchFundManager) && (
         <div className="fixed bottom-20 right-8 z-50 flex flex-col items-end gap-4">
           {activeTab === 'funds' && (
             <button
@@ -416,6 +698,17 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
               </svg>
             </button>
           )}
+          {activeTab === 'match-expenses' && (
+            <button
+              className="bg-orange-600 hover:bg-orange-700 text-white rounded-full shadow-lg w-16 h-16 flex items-center justify-center text-3xl transition-all"
+              title="Add Match Expense"
+              onClick={() => setShowMatchExpenseModal(true)}
+            >
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4m4-4h8v8H8z" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
@@ -431,6 +724,12 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
             onClick={() => setActiveTab('expenses')}
           >
             All Expenses
+          </button>
+          <button
+            className={`px-4 py-2 rounded-t font-semibold border-b-2 transition-colors ${activeTab === 'match-expenses' ? 'border-orange-600 text-orange-900 bg-orange-100' : 'border-transparent text-gray-500 bg-gray-50 hover:bg-orange-100'}`}
+            onClick={() => setActiveTab('match-expenses')}
+          >
+            Match Expenses
           </button>
         </div>
         {activeTab === 'funds' ? (
@@ -487,8 +786,10 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
               </div>
             </>
           )
-        ) : (
+        ) : activeTab === 'expenses' ? (
           renderExpenses()
+        ) : (
+          renderMatchExpenses()
         )}
       </div>
       <AddFundModal
@@ -543,49 +844,49 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
           }}
         />
       )}
-      {/* Delete Fund Confirmation Dialog */}
-      {deleteDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md flex flex-col gap-4">
-            <div className="text-lg font-bold text-gray-800 mb-2">Delete Fund</div>
-            <div className="text-sm text-gray-700 mb-1">Are you sure you want to delete <span className="font-semibold">{deleteDialog.fund.description}</span>?</div>
-            <div className="text-sm text-gray-700 mb-2">Enter the amount to deduct for each player who paid:</div>
-            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
-              {Object.entries(deleteDialog.amounts).map(([pid, amt]: [string, number]) => {
-                const player = allPlayers.find((p: any) => String(p.playerId) === String(pid));
-                return (
-                  <div key={pid} className="flex items-center gap-2">
-                    {player?.profileImage && (
-                      <img src={player.profileImage} alt={player.playerName} className="w-6 h-6 rounded-full object-cover border" />
-                    )}
-                    <span className="font-medium text-gray-800 flex-1">{player?.playerName || pid}</span>
-                    <input
-                      type="number"
-                      className="p-2 border border-gray-300 rounded text-gray-900 bg-white w-24"
-                      value={deleteDialog.amounts[pid]}
-                      min={0}
-                      onChange={e => {
-                        const val = Number(e.target.value);
-                        setDeleteDialog(d => d ? { ...d, amounts: { ...d.amounts, [pid]: val } } : d);
-                      }}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex gap-2 justify-end mt-2">
-              <button
-                className="px-4 py-2 rounded bg-gray-200 hover:bg-gray-300 text-gray-700"
-                onClick={() => setDeleteDialog(null)}
-              >Cancel</button>
-              <button
-                className="px-4 py-2 rounded bg-red-600 hover:bg-red-700 text-white font-semibold"
-                onClick={confirmDeleteFund}
-              >Delete</button>
-            </div>
-          </div>
-        </div>
+      {/* AddMatchExpenseModal for add/edit */}
+      {showMatchExpenseModal && (
+        <AddMatchExpenseModal
+          isOpen={showMatchExpenseModal}
+          onClose={() => setShowMatchExpenseModal(false)}
+          allPlayers={allPlayers}
+          onSave={handleAddMatchExpenseSave}
+        />
       )}
+      {editingMatchExpense && (
+        <AddMatchExpenseModal
+          isOpen={!!editingMatchExpense}
+          onClose={() => setEditingMatchExpense(null)}
+          allPlayers={allPlayers}
+          onSave={data => handleModifyMatchExpenseSave({ ...data, id: editingMatchExpense.id })}
+          initialData={editingMatchExpense}
+        />
+      )}
+      {/* AwardAnimationModal for settled up */}
+      <TickAnimationModal
+        open={showSettleAnimation}
+        onClose={() => setShowSettleAnimation(false)}
+        message={settleMessage}
+      />
+      {/* Delete Fund Confirmation Dialog */}
+      <DeleteFundDialog
+        open={!!deleteDialog}
+        onClose={() => setDeleteDialog(null)}
+        onConfirm={confirmDeleteFund}
+        fund={deleteDialog?.fund}
+        amounts={deleteDialog?.amounts || {}}
+        allPlayers={allPlayers}
+        setAmounts={(amounts: any) => setDeleteDialog(d => d ? { ...d, amounts } : d)}
+      />
+      {/* PlayersExpensesModal integration */}
+      <PlayersExpensesModal
+        open={showPlayersExpensesModal}
+        onClose={handleClosePlayersExpensesModal}
+        matchExpense={selectedMatchExpense}
+        squadPlayers={allPlayers.filter((p: any) => selectedMatchExpense?.players?.includes(p.playerId))}
+        allPlayers={allPlayers}
+        teamConfig={teamConfig}
+      />
     </div>
   );
 };
