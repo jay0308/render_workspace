@@ -127,6 +127,16 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
     }
   }, [showMatchExpenseModal]);
 
+  useEffect(() => {
+    const handleFundSettledUp = () => {
+      setSettleMessage('Fund Settled Up!');
+      setShowSettleAnimation(true);
+      // Optionally, refetch funds here if needed
+    };
+    window.addEventListener('fundSettledUp', handleFundSettledUp);
+    return () => window.removeEventListener('fundSettledUp', handleFundSettledUp);
+  }, []);
+
   const handleAddFundSave = async (data: { description: string; amount: number; dueDate: string; players: string[]; id?: string }) => {
     try {
       setLoadingFunds(true);
@@ -568,21 +578,21 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                   </div>
                 )}
                 {canManageMatchFunds && (
-                  <div className="flex flex-col md:flex-row gap-2 mt-4">
+                  <div className="grid grid-cols-2 gap-3 mt-4">
                     <button
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-orange-600 text-orange-700 bg-white hover:bg-orange-50 font-semibold shadow transition"
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-orange-600 text-orange-700 bg-white hover:bg-orange-50 font-semibold shadow transition"
                       onClick={() => { setSelectedMatchExpense(expense); setShowPlayersExpensesModal(true); }}
                     >
                       <span>👥</span> Players Expenses
                     </button>
                     <button
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
                       onClick={() => setEditingMatchExpense(expense)}
                     >
                       <span>✏️</span> Modify
                     </button>
                     <button
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition col-span-2"
                       onClick={() => {
                         // Build share message
                         let msg = `Match Expense: ${expense.description}\n`;
@@ -610,7 +620,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                       <span>🔗</span> Share
                     </button>
                     <button
-                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-700 bg-white hover:bg-gray-50 font-semibold shadow transition"
+                      className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-700 bg-white hover:bg-gray-50 font-semibold shadow transition col-span-2"
                       onClick={() => handleSettleUpMatchExpense(expense)}
                     >
                       <span>✅</span> Settled Up
@@ -781,6 +791,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                     onModify={() => { setEditFund(fund); setShowModal(true); }}
                     onDelete={() => handleDeleteFund(fund.id)}
                     penaltyPerDay={PENALTY_AMOUNT_PER_DAY}
+                    setFunds={setFunds}
                   />
                 ))}
               </div>

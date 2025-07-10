@@ -3,7 +3,7 @@ import { getConfigData, getTeamFunData, updateTeamFunData } from "@/utils/JSONBl
 
 export async function POST(req: NextRequest) {
   try {
-    const { id, amounts } = await req.json();
+    const { id, amounts, skipBalance } = await req.json();
     if (!id) {
       return NextResponse.json({ error: "Missing fund id" }, { status: 400 });
     }
@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Fund list not found" }, { status: 404 });
     }
     const updatedList = fundList.filter((f: any) => String(f.id) !== String(id));
-    // Deduct the sum of amounts from totalBalance if provided
+    // Deduct the sum of amounts from totalBalance if provided and not skipping balance
     let totalBalance = typeof fundBlob?.totalBalance === 'number' ? fundBlob.totalBalance : 0;
-    if (amounts && typeof amounts === 'object') {
+    if (!skipBalance && amounts && typeof amounts === 'object') {
       let sum = 0;
       for (const key in amounts) {
         if (Object.prototype.hasOwnProperty.call(amounts, key)) {

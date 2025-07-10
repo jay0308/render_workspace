@@ -1,5 +1,6 @@
 import React from "react";
 import { calculatePenalty } from "../utils/commonUtils";
+import { post, get } from '../utils/request';
 
 interface FundCardProps {
   fund: any;
@@ -9,9 +10,10 @@ interface FundCardProps {
   onModify: () => void;
   onDelete: () => void;
   penaltyPerDay: number;
+  setFunds: (funds: any[]) => void; // Added setFunds prop
 }
 
-const FundCard: React.FC<FundCardProps> = ({ fund, isAdmin, isFundManager, onPayments, onModify, onDelete, penaltyPerDay }) => {
+const FundCard: React.FC<FundCardProps> = ({ fund, isAdmin, isFundManager, onPayments, onModify, onDelete, penaltyPerDay, setFunds }) => {
   const allPlayers = fund.allPlayers || [];
   const getWhatsappMessage = React.useCallback(() => {
     let msg = `*${fund.description}*\n`;
@@ -73,6 +75,30 @@ const FundCard: React.FC<FundCardProps> = ({ fund, isAdmin, isFundManager, onPay
     }
   }
 
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSettleUpFund = async () => {
+    if (!window.confirm('Are you sure you want to settle up this fund?')) return;
+    setLoading(true);
+    try {
+      const data: { success?: boolean } = await post('/api/delete-fund', { id: fund.id, skipBalance: true });
+      if (data && data.success) {
+        // Refetch funds after success
+        const resp: { fundList?: any[] } = await get('/api/get-funds');
+        if (resp && Array.isArray(resp.fundList) && typeof setFunds === 'function') {
+          setFunds(resp.fundList);
+        }
+        if (typeof window !== 'undefined' && window.dispatchEvent) {
+          window.dispatchEvent(new CustomEvent('fundSettledUp'));
+        }
+      }
+    } catch (e) {
+      alert('Failed to settle up fund');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className={`rounded-xl shadow-md ${cardBg} p-5 mb-6 border-2 ${borderColor}`}>
       <div className="mb-4">
@@ -96,32 +122,42 @@ const FundCard: React.FC<FundCardProps> = ({ fund, isAdmin, isFundManager, onPay
         </div>
       </div>
       {(isAdmin || isFundManager) && (
-        <div className="flex flex-col md:flex-row gap-2 mt-4">
+        <div className="grid grid-cols-2 gap-3 mt-4">
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white font-semibold shadow transition"
             onClick={handleWhatsappShare}
             title="Share on WhatsApp"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M16.72 13.06a4.5 4.5 0 00-1.27-1.27c-.2-.13-.44-.18-.67-.13-.23.05-.44.2-.57.4l-.3.5a.75.75 0 01-.97.32 7.5 7.5 0 01-3.3-3.3.75.75 0 01.32-.97l.5-.3c.2-.13.35-.34.4-.57.05-.23 0-.47-.13-.67a4.5 4.5 0 00-1.27-1.27c-.2-.13-.44-.18-.67-.13-.23.05-.44.2-.57.4l-.3.5a1.75 1.75 0 00-.18 1.6c.7 1.7 2.1 3.1 3.8 3.8.2.08.42.06.6-.06l.5-.3c.2-.13.44-.18.67-.13.23.05.44.2.57.4l.3.5c.13.2.18.44.13.67-.05.23-.2.44-.4.57z" /></svg>
-            Share
+            <span>📞</span> Share
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold shadow transition"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold shadow transition"
             onClick={onPayments}
+            title="Payments"
           >
             <span>💸</span> Payments
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-blue-600 text-blue-700 bg-white hover:bg-blue-50 font-semibold shadow transition"
             onClick={onModify}
+            title="Modify"
           >
             <span>✏️</span> Modify
           </button>
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-600 text-red-700 bg-white hover:bg-red-50 font-semibold shadow transition"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-red-600 text-red-700 bg-white hover:bg-red-50 font-semibold shadow transition"
             onClick={onDelete}
+            title="Delete"
           >
             <span>🗑️</span> Delete
+          </button>
+          <button
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-gray-600 text-gray-700 bg-white hover:bg-gray-50 font-semibold shadow transition col-span-2"
+            onClick={handleSettleUpFund}
+            title="Settle Up Fund (does not affect total balance)"
+            disabled={loading}
+          >
+            {loading ? <span className="animate-spin">⏳</span> : <span>✅</span>} Settled Up
           </button>
         </div>
       )}
