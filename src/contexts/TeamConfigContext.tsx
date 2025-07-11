@@ -4,6 +4,7 @@ interface BattingOrderPlayer {
   playerName: string;
   playerId: string;
   battingOrder: number;
+  profileImage?: string;
 }
 
 interface Benchmark {
@@ -25,6 +26,7 @@ interface TeamConfig {
   ADMIN_PROFILE_ID: number;
   AWARD_NOW_VISIBLITY_PROFILE_ID: number[];
   battingOrder: BattingOrderPlayer[];
+  teamMembers: BattingOrderPlayer[];
   benchmarks: Benchmark[];
   teamRules: TeamRule[];
   metadata: {

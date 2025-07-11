@@ -130,6 +130,13 @@ const ManageTeamMembersModal: React.FC<ManageTeamMembersModalProps> = ({
   const showCount = showMembers.length;
   const filteredMembers = showMembers.filter((m: any) => m.playerName.toLowerCase().includes(search.toLowerCase()));
 
+  const sortedMembers = [...filteredMembers].sort((a, b) => {
+    const aActive = activeIds.includes(a.playerId);
+    const bActive = activeIds.includes(b.playerId);
+    if (aActive === bActive) return 0;
+    return aActive ? -1 : 1;
+  });
+
   if (!isOpen) return null;
 
   return (
@@ -176,7 +183,7 @@ const ManageTeamMembersModal: React.FC<ManageTeamMembersModalProps> = ({
                 placeholder="Search players..."
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {filteredMembers.map((m: any) => {
+                {sortedMembers.map((m: any) => {
                   const selected = activeIds.includes(m.playerId);
                   return (
                     <label

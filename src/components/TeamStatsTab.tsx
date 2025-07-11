@@ -625,7 +625,14 @@ const TeamStatsTab: React.FC = () => {
         <BattingOrderModal
           isOpen={showBattingOrderModal}
           onClose={() => setShowBattingOrderModal(false)}
-          initialBattingOrder={teamConfig.battingOrder || []}
+          initialBattingOrder={
+            (teamConfig.teamMembers || []).filter(orderPlayer => {
+              const members: any[] = (teamConfig as any).teamMembers || [];
+              return Array.isArray(members)
+                ? members.some((m: any) => m.playerId === orderPlayer.playerId && m.isActive)
+                : true;
+            })
+          }
           onOrderUpdated={handleBattingOrderUpdated}
         />
       )}

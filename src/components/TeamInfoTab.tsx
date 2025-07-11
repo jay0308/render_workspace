@@ -65,10 +65,15 @@ const TeamInfoTab: React.FC = () => {
                   key={player.playerId}
                   className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200"
                 >
-                  <div className="w-8 h-8 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold text-sm">
-                    {player.battingOrder}
+                  <div className="relative w-10 h-10">
+                    {player.profileImage && (
+                      <img src={player.profileImage} alt={player.playerName} className="w-10 h-10 rounded-full object-cover border" />
+                    )}
+                    <div className="absolute bottom-0 left-0 w-6 h-6 bg-teal-700 bg-opacity-70 text-white rounded-full flex items-center justify-center font-bold text-xs border-2 border-white shadow-md">
+                      {player.battingOrder}
+                    </div>
                   </div>
-                  <span className="font-medium text-gray-800">{player.playerName}</span>
+                  <span className="font-medium text-gray-800 text-base ml-2">{player.playerName}</span>
                 </div>
               ))}
             </div>
