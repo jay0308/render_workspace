@@ -583,7 +583,7 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                   <span className="text-gray-600">{expense.dueDate ? new Date(expense.dueDate).toLocaleDateString() : '-'}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-gray-700 font-medium">Paid By:</span>
+                  <span className="text-gray-700 font-medium">Match Fees Paid By:</span>
                   <span className="text-gray-800 font-semibold">{(() => {
                     const player = allPlayers.find((p: any) => p.playerId === expense.paidBy);
                     return player ? player.playerName : expense.paidBy || '-';
@@ -612,6 +612,20 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
                 {expense.createdDate && (
                   <div className="flex items-center gap-2 mt-1">
                     <span className="text-gray-400 text-xs">Created at: {new Date(expense.createdDate).toLocaleString()}</span>
+                  </div>
+                )}
+
+                {/* For non-admin/fund-manager users, show breakup if userSummary exists */}
+                {!(isAdmin || isMatchFundManager) && userSummary && (
+                  <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm">
+                    <span className="text-gray-700">Total </span>
+                    <span className="font-bold text-gray-900">(₹{((userSummary.matchFee ?? 0) + (userSummary.food ?? 0) + (userSummary.miscShare ?? 0)).toFixed(2)})</span>
+                    <span className="text-gray-700"> = Match Fee </span>
+                    <span className="font-bold text-gray-900">(₹{(userSummary.matchFee ?? 0).toFixed(2)})</span>
+                    <span className="text-gray-700"> + Food </span>
+                    <span className="font-bold text-gray-900">(₹{(userSummary.food ?? 0).toFixed(2)})</span>
+                    <span className="text-gray-700"> + Misc </span>
+                    <span className="font-bold text-gray-900">(₹{(userSummary.miscShare ?? 0).toFixed(2)})</span>
                   </div>
                 )}
 
