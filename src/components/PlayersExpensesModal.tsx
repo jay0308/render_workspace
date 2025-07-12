@@ -28,7 +28,7 @@ interface PlayersExpensesModalProps {
   teamConfig?: any;
 }
 
-const PlayersExpensesModal: React.FC<PlayersExpensesModalProps> = ({ open, onClose, matchExpense, squadPlayers }) => {
+const PlayersExpensesModal: React.FC<PlayersExpensesModalProps> = ({ open, onClose, matchExpense, squadPlayers, allPlayers, teamConfig }) => {
   // State
   const [participants, setParticipants] = useState<Participant[]>(() => {
     if (!matchExpense) return [];
@@ -245,6 +245,11 @@ const PlayersExpensesModal: React.FC<PlayersExpensesModalProps> = ({ open, onClo
 
   if (!open) return null;
 
+  // Determine food menu: use from config if available, else fallback
+  const foodMenu = (teamConfig && Array.isArray(teamConfig.FOOD_MENU) && teamConfig.FOOD_MENU.length > 0)
+    ? teamConfig.FOOD_MENU
+    : FOOD_MENU;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh] pb-10">
@@ -300,11 +305,11 @@ const PlayersExpensesModal: React.FC<PlayersExpensesModalProps> = ({ open, onClo
                       {/* Add Food */}
                       <div className="flex flex-col sm:flex-row gap-2 mt-2 w-full">
                         <select className="p-1 border rounded text-gray-900 w-full sm:w-auto" onChange={e => {
-                          const food = FOOD_MENU.find(f => f.name === e.target.value);
+                          const food = foodMenu.find((f: any) => f.name === e.target.value);
                           if (food) p.isSquad ? addFood(p.id, food) : addFoodToTemp(p.id, food);
                         }} value="">
                           <option value="">Add food...</option>
-                          {FOOD_MENU.map(f => <option key={f.name} value={f.name}>{f.name} (₹{f.price})</option>)}
+                          {foodMenu.map((f: any) => <option key={f.name} value={f.name}>{f.name} (₹{f.price})</option>)}
                         </select>
                         <input type="text" placeholder="Custom food" className="p-1 border rounded text-gray-900 w-full sm:w-auto" value={customFood.name} onChange={e => setCustomFood(c => ({ ...c, name: e.target.value }))} />
                         <input type="number" placeholder="Price" className="p-1 border rounded w-full sm:w-20 text-gray-900" value={customFood.price} onChange={e => setCustomFood(c => ({ ...c, price: e.target.value }))} />
