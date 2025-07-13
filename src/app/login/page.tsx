@@ -2,19 +2,43 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 
+// Helper to check profile ID
+async function checkProfileId(profileId: string): Promise<{ success: boolean; isAdmin?: boolean }> {
+  try {
+    const res = await fetch("/api/check-profile-id", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profileId }),
+    });
+    if (!res.ok) return { success: false };
+    return await res.json();
+  } catch {
+    return { success: false };
+  }
+}
+
 export default function LoginPage() {
   const [profileId, setProfileId] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!profileId.trim() || isNaN(Number(profileId))) {
       setError("Please enter a valid numeric profile ID");
       return;
     }
-    localStorage.setItem("cricheroes_profile_id", profileId.trim());
-    router.push("/");
+    setLoading(true);
+    setError("");
+    const result = await checkProfileId(profileId.trim());
+    setLoading(false);
+    if (result.success) {
+      localStorage.setItem("cricheroes_profile_id", profileId.trim());
+      router.push("/");
+    } else {
+      setError("Not belongs to Counterstrikers team");
+    }
   };
 
   return (
@@ -30,13 +54,15 @@ export default function LoginPage() {
             value={profileId}
             onChange={e => { setProfileId(e.target.value); setError(""); }}
             required
+            disabled={loading}
           />
           {error && <span className="text-xs text-red-500">{error}</span>}
           <button
             type="submit"
-            className="py-2 rounded bg-teal-600 text-white hover:bg-teal-700 font-semibold mt-2"
+            className="py-2 rounded bg-teal-600 text-white hover:bg-teal-700 font-semibold mt-2 disabled:opacity-60"
+            disabled={loading}
           >
-            Login
+            {loading ? "Checking..." : "Login"}
           </button>
         </form>
       </div>
