@@ -413,6 +413,12 @@ const TeamFundsTab: React.FC<TeamFundsTabProps> = ({ teamConfig }) => {
       if (response && Array.isArray(response.matchExpenseList)) {
         setMatchExpenseList(response.matchExpenseList);
         if (typeof response.totalBalance === 'number') setTotalBalance(response.totalBalance);
+        // Open PlayersExpensesModal for the updated expense
+        const updatedExpense = response.matchExpenseList.find((e: any) => e.id === data.id);
+        if (updatedExpense) {
+          setSelectedMatchExpense(updatedExpense);
+          setShowPlayersExpensesModal(true);
+        }
       } else {
         await fetchMatchExpenses();
       }
