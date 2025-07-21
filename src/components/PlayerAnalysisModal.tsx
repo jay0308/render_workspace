@@ -78,17 +78,20 @@ const PlayerAnalysisModal: React.FC<PlayerAnalysisModalProps> = ({
     // Score based on average
     if (average >= avgThreshold.excellent) score += 3;
     else if (average >= avgThreshold.average) score += 2;
-    else score += 1;
+    else if (average > 0) score += 1; // Only give 1 point if average is above 0
+    else score += 0; // 0 points for 0 average
     
     // Score based on strike rate
     if (strikeRate >= srThreshold.excellent) score += 3;
     else if (strikeRate >= srThreshold.average) score += 2;
-    else score += 1;
+    else if (strikeRate > 0) score += 1; // Only give 1 point if strike rate is above 0
+    else score += 0; // 0 points for 0 strike rate
     
     // Score based on total runs
     if (runs >= runsThreshold.excellent) score += 3;
     else if (runs >= runsThreshold.average) score += 2;
-    else score += 1;
+    else if (runs > 0) score += 1; // Only give 1 point if runs are above 0
+    else score += 0; // 0 points for 0 runs
     
     return score;
   };
@@ -142,14 +145,20 @@ const PlayerAnalysisModal: React.FC<PlayerAnalysisModalProps> = ({
   const battingScore = getBattingScore();
   const bowlingScore = getBowlingScore();
   const totalScore = battingScore + bowlingScore;
-  const percentage = Math.round((totalScore / 18) * 100);
+  
+  // Calculate max possible score based on player's participation
+  const hasBatting = player.batting.innings > 0;
+  const hasBowling = player.bowling.innings > 0;
+  const maxPossibleScore = (hasBatting ? 9 : 0) + (hasBowling ? 9 : 0);
+  
+  // Calculate percentage based on actual participation
+  const percentage = maxPossibleScore > 0 ? Math.round((totalScore / maxPossibleScore) * 100) : 0;
 
-  // Get performance category
+  // Get performance category (same logic as TeamStatsTab)
   const getPerformanceCategory = (score: number) => {
-    if (score >= 7) return { text: 'Excellent', color: 'text-green-600', bg: 'bg-green-100' };
-    if (score >= 5) return { text: 'Good', color: 'text-blue-600', bg: 'bg-blue-100' };
-    if (score >= 3) return { text: 'Average', color: 'text-yellow-600', bg: 'bg-yellow-100' };
-    return { text: 'Poor', color: 'text-red-600', bg: 'bg-red-100' };
+    if (score >= 8) return { text: 'Excellent', color: 'text-green-600', bg: 'bg-green-100' };
+    if (score >= 6) return { text: 'Average', color: 'text-yellow-600', bg: 'bg-orange-100' };
+    return { text: 'Underperformer', color: 'text-red-600', bg: 'bg-red-100' };
   };
 
   // Get role recommendation
@@ -225,7 +234,7 @@ const PlayerAnalysisModal: React.FC<PlayerAnalysisModalProps> = ({
             <div className="text-center">
               <div className="text-3xl font-bold text-gray-900">{percentage}%</div>
               <div className="text-lg text-gray-600">Overall Performance</div>
-              <div className="text-sm text-gray-500">Score: {totalScore}/18</div>
+              <div className="text-sm text-gray-500">Score: {totalScore}/{maxPossibleScore}</div>
             </div>
           </div>
 
@@ -246,99 +255,109 @@ const PlayerAnalysisModal: React.FC<PlayerAnalysisModalProps> = ({
           </div>
 
           {/* Batting Analysis */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Batting Analysis</h3>
-            <div className="grid grid-cols-2 gap-4 mb-3">
-              <div>
-                <div className="text-sm text-gray-600">Runs</div>
-                <div className="text-lg font-bold text-gray-900">{player.batting.runs}</div>
+          {hasBatting && (
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Batting Analysis</h3>
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <div className="text-sm text-gray-600">Runs</div>
+                  <div className="text-lg font-bold text-gray-900">{player.batting.runs}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Average</div>
+                  <div className="text-lg font-bold text-gray-900">{player.batting.average.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Strike Rate</div>
+                  <div className="text-lg font-bold text-gray-900">{player.batting.strikeRate.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Innings</div>
+                  <div className="text-lg font-bold text-gray-900">{player.batting.innings}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Average</div>
-                <div className="text-lg font-bold text-gray-900">{player.batting.average.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Strike Rate</div>
-                <div className="text-lg font-bold text-gray-900">{player.batting.strikeRate.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Innings</div>
-                <div className="text-lg font-bold text-gray-900">{player.batting.innings}</div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Performance Score:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900">{battingScore}/9</span>
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${battingCategory.bg} ${battingCategory.color}`}>
+                    {battingCategory.text}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Performance Score:</span>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900">{battingScore}/9</span>
-                <span className={`px-2 py-1 rounded text-xs font-semibold ${battingCategory.bg} ${battingCategory.color}`}>
-                  {battingCategory.text}
-                </span>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Bowling Analysis */}
-          <div className="border border-gray-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Bowling Analysis</h3>
-            <div className="grid grid-cols-2 gap-4 mb-3">
-              <div>
-                <div className="text-sm text-gray-600">Wickets</div>
-                <div className="text-lg font-bold text-gray-900">{player.bowling.wickets}</div>
+          {hasBowling && (
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Bowling Analysis</h3>
+              <div className="grid grid-cols-2 gap-4 mb-3">
+                <div>
+                  <div className="text-sm text-gray-600">Wickets</div>
+                  <div className="text-lg font-bold text-gray-900">{player.bowling.wickets}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Average</div>
+                  <div className="text-lg font-bold text-gray-900">{player.bowling.average.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Economy</div>
+                  <div className="text-lg font-bold text-gray-900">{player.bowling.economy.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Innings</div>
+                  <div className="text-lg font-bold text-gray-900">{player.bowling.innings}</div>
+                </div>
               </div>
-              <div>
-                <div className="text-sm text-gray-600">Average</div>
-                <div className="text-lg font-bold text-gray-900">{player.bowling.average.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Economy</div>
-                <div className="text-lg font-bold text-gray-900">{player.bowling.economy.toFixed(2)}</div>
-              </div>
-              <div>
-                <div className="text-sm text-gray-600">Innings</div>
-                <div className="text-lg font-bold text-gray-900">{player.bowling.innings}</div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-gray-700">Performance Score:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900">{bowlingScore}/9</span>
+                  <span className={`px-2 py-1 rounded text-xs font-semibold ${bowlingCategory.bg} ${bowlingCategory.color}`}>
+                    {bowlingCategory.text}
+                  </span>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium text-gray-700">Performance Score:</span>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900">{bowlingScore}/9</span>
-                <span className={`px-2 py-1 rounded text-xs font-semibold ${bowlingCategory.bg} ${bowlingCategory.color}`}>
-                  {bowlingCategory.text}
-                </span>
-              </div>
-            </div>
-          </div>
+          )}
 
           {/* Performance Breakdown */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Performance Breakdown</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Batting Score</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-blue-600 h-2 rounded-full" 
-                      style={{ width: `${(battingScore / 9) * 100}%` }}
-                    ></div>
+          {(hasBatting || hasBowling) && (
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">Performance Breakdown</h3>
+              <div className="space-y-3">
+                {hasBatting && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Batting Score</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full" 
+                          style={{ width: `${(battingScore / 9) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{battingScore}/9</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{battingScore}/9</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-700">Bowling Score</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 bg-gray-200 rounded-full h-2">
-                    <div 
-                      className="bg-green-600 h-2 rounded-full" 
-                      style={{ width: `${(bowlingScore / 9) * 100}%` }}
-                    ></div>
+                )}
+                {hasBowling && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Bowling Score</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-green-600 h-2 rounded-full" 
+                          style={{ width: `${(bowlingScore / 9) * 100}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-sm font-medium text-gray-900">{bowlingScore}/9</span>
+                    </div>
                   </div>
-                  <span className="text-sm font-medium text-gray-900">{bowlingScore}/9</span>
-                </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Footer */}
