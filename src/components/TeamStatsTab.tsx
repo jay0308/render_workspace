@@ -3,6 +3,8 @@ import { post } from "@/utils/request";
 import { useTeamConfig } from "../contexts/TeamConfigContext";
 import { useTeamStats, AggregatedBattingStats, AggregatedBowlingStats, TeamStatsData } from "../contexts/TeamStatsContext";
 import BattingOrderModal from "./BattingOrderModal";
+import PlayerAnalysisModal from "./PlayerAnalysisModal";
+import { aggregatePlayerStats } from "../utils/playerAnalysisUtils";
 
 const TeamStatsTab: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'matches' | 'batting' | 'bowling'>('matches');
@@ -12,6 +14,11 @@ const TeamStatsTab: React.FC = () => {
   const [bowlingSortOrder, setBowlingSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showBattingOrderModal, setShowBattingOrderModal] = useState(false);
   const [isLegendExpanded, setIsLegendExpanded] = useState(false);
+  
+  // Player Analysis Modal state
+  const [showPlayerAnalysisModal, setShowPlayerAnalysisModal] = useState(false);
+  const [selectedPlayerForAnalysis, setSelectedPlayerForAnalysis] = useState<any>(null);
+  
   const { teamConfig } = useTeamConfig();
   const { teamStats, isLoading: loading, error, fetchTeamStats, refreshTeamStats } = useTeamStats();
   
@@ -41,6 +48,36 @@ const TeamStatsTab: React.FC = () => {
     
     // Reload the page to refresh the team config
     window.location.reload();
+  };
+
+  // Handle player analysis
+  const handlePlayerAnalysis = (playerId: number, playerName: string) => {
+    // Convert team stats to the format expected by PlayerAnalysisModal
+    const battingPlayer = teamStats?.aggregatedBattingStats?.find((p: any) => p.playerId === playerId);
+    const bowlingPlayer = teamStats?.aggregatedBowlingStats?.find((p: any) => p.playerId === playerId);
+    
+    if (battingPlayer || bowlingPlayer) {
+      const playerStats = {
+        playerId: String(playerId),
+        playerName,
+        profileImage: (battingPlayer as any)?.profileImage || (bowlingPlayer as any)?.profileImage,
+        batting: {
+          innings: battingPlayer?.innings || 0,
+          runs: battingPlayer?.totalRuns || 0,
+          strikeRate: battingPlayer?.strikeRate || 0,
+          average: battingPlayer?.average || 0
+        },
+        bowling: {
+          innings: bowlingPlayer?.innings || 0,
+          wickets: bowlingPlayer?.totalWickets || 0,
+          economy: bowlingPlayer?.economyRate || 0,
+          average: bowlingPlayer?.bowlingAverage || 0
+        }
+      };
+      
+      setSelectedPlayerForAnalysis(playerStats);
+      setShowPlayerAnalysisModal(true);
+    }
   };
 
   // Check if user can see reshuffle button (same logic as award button)
@@ -454,6 +491,9 @@ const TeamStatsTab: React.FC = () => {
               >
                 Innings
               </SortableHeader>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -472,6 +512,14 @@ const TeamStatsTab: React.FC = () => {
                       {player.innings - player.notOutInnings}*/{player.notOutInnings}
                     </div>
                     <div className="font-medium">{player.innings}</div>
+                  </td>
+                  <td className="px-4 py-3 text-sm">
+                    <button
+                      onClick={() => handlePlayerAnalysis(player.playerId, player.playerName)}
+                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Analyse
+                    </button>
                   </td>
                 </tr>
               );
@@ -580,6 +628,9 @@ const TeamStatsTab: React.FC = () => {
               >
                 Innings
               </SortableHeader>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -594,6 +645,14 @@ const TeamStatsTab: React.FC = () => {
                   <td className="px-4 py-3 text-sm text-gray-500">{player.bowlingAverage > 0 ? player.bowlingAverage.toFixed(2) : '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{player.totalRuns}</td>
                   <td className="px-4 py-3 text-sm text-gray-500">{player.innings}</td>
+                  <td className="px-4 py-3 text-sm">
+                    <button
+                      onClick={() => handlePlayerAnalysis(player.playerId, player.playerName)}
+                      className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                    >
+                      Analyse
+                    </button>
+                  </td>
                 </tr>
               );
             })}
@@ -634,6 +693,19 @@ const TeamStatsTab: React.FC = () => {
             })
           }
           onOrderUpdated={handleBattingOrderUpdated}
+        />
+      )}
+
+      {/* Player Analysis Modal */}
+      {selectedPlayerForAnalysis && teamConfig && (
+        <PlayerAnalysisModal
+          isOpen={showPlayerAnalysisModal}
+          onClose={() => {
+            setShowPlayerAnalysisModal(false);
+            setSelectedPlayerForAnalysis(null);
+          }}
+          player={selectedPlayerForAnalysis}
+          teamConfig={teamConfig}
         />
       )}
 

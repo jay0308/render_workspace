@@ -114,7 +114,7 @@ async function extractScorecardData(matchJson: any): Promise<MatchScorecardData>
   const teamBowling: BowlingStats[] = opponentTeam?.bowling?.map((player: any) => ({
     playerId: player.player_id,
     playerName: player.name,
-    overs: `${player.overs}.${player.balls}`,
+    overs: `${player.overs}.${player.balls%6}`,
     maidens: player.maidens,
     runs: player.runs,
     wickets: player.wickets,
