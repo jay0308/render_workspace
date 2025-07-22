@@ -177,6 +177,20 @@ const PlayerAnalysisModal: React.FC<PlayerAnalysisModalProps> = ({
           battingPosition: '4-7',
           bowlingRole: 'Full quota bowler'
         };
+      } else if (battingScore >= 6 && bowlingScore < 4) {
+        return {
+          role: 'Batting Specialist',
+          description: 'Strong batting performance with limited bowling contribution',
+          battingPosition: '1-7',
+          bowlingRole: 'Part-time bowler'
+        };
+      } else if (bowlingScore >= 6 && battingScore < 4) {
+        return {
+          role: 'Bowling Specialist',
+          description: 'Strong bowling performance with limited batting contribution',
+          battingPosition: '8-11',
+          bowlingRole: 'Full quota bowler'
+        };
       } else if (battingScore >= 4 && bowlingScore >= 4) {
         return {
           role: 'Utility Player',
