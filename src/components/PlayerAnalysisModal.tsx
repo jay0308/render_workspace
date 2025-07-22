@@ -163,40 +163,104 @@ const PlayerAnalysisModal: React.FC<PlayerAnalysisModalProps> = ({
 
   // Get role recommendation
   const getRoleRecommendation = () => {
-    if (battingScore >= 6 && bowlingScore >= 6) {
-      return {
-        role: 'All-Rounder',
-        description: 'Balanced performer in both batting and bowling',
-        battingPosition: '4-7',
-        bowlingRole: 'Full quota bowler'
-      };
-    } else if (battingScore >= 6 && bowlingScore < 4) {
-      return {
-        role: 'Batting Specialist',
-        description: 'Strong batting performance with limited bowling contribution',
-        battingPosition: '1-7',
-        bowlingRole: 'Part-time bowler'
-      };
-    } else if (bowlingScore >= 6 && battingScore < 4) {
-      return {
-        role: 'Bowling Specialist',
-        description: 'Strong bowling performance with limited batting contribution',
-        battingPosition: '8-11',
-        bowlingRole: 'Full quota bowler'
-      };
-    } else if (battingScore >= 4 && bowlingScore >= 4) {
-      return {
-        role: 'Utility Player',
-        description: 'Moderate contribution in both departments',
-        battingPosition: '6-9',
-        bowlingRole: 'Medium overs'
-      };
+    // Check if player only bats or only bowls
+    const onlyBats = hasBatting && !hasBowling;
+    const onlyBowls = hasBowling && !hasBatting;
+    const isAllRounder = hasBatting && hasBowling;
+
+    if (isAllRounder) {
+      // All-rounder logic (both batting and bowling)
+      if (battingScore >= 6 && bowlingScore >= 6) {
+        return {
+          role: 'All-Rounder',
+          description: 'Balanced performer in both batting and bowling',
+          battingPosition: '4-7',
+          bowlingRole: 'Full quota bowler'
+        };
+      } else if (battingScore >= 4 && bowlingScore >= 4) {
+        return {
+          role: 'Utility Player',
+          description: 'Moderate contribution in both departments',
+          battingPosition: '6-9',
+          bowlingRole: 'Medium overs'
+        };
+      } else {
+        return {
+          role: 'Development Player',
+          description: 'Needs improvement in both batting and bowling',
+          battingPosition: '10-11',
+          bowlingRole: 'Limited overs'
+        };
+      }
+    } else if (onlyBats) {
+      // Batting-only player logic
+      if (battingScore >= 8) {
+        return {
+          role: 'Top Order Batsman',
+          description: 'Strong batting performance, primary run scorer',
+          battingPosition: '1-3',
+          bowlingRole: 'Non-bowler'
+        };
+      } else if (battingScore >= 6) {
+        return {
+          role: 'Middle Order Batsman',
+          description: 'Reliable batting performance',
+          battingPosition: '4-7',
+          bowlingRole: 'Non-bowler'
+        };
+      } else if (battingScore >= 4) {
+        return {
+          role: 'Lower Order Batsman',
+          description: 'Limited batting contribution',
+          battingPosition: '8-11',
+          bowlingRole: 'Non-bowler'
+        };
+      } else {
+        return {
+          role: 'Tail-End Batsman',
+          description: 'Minimal batting contribution, needs improvement',
+          battingPosition: '10-11',
+          bowlingRole: 'Non-bowler'
+        };
+      }
+    } else if (onlyBowls) {
+      // Bowling-only player logic
+      if (bowlingScore >= 8) {
+        return {
+          role: 'Lead Bowler',
+          description: 'Strong bowling performance, primary wicket taker',
+          battingPosition: '10-11',
+          bowlingRole: 'Full quota bowler'
+        };
+      } else if (bowlingScore >= 6) {
+        return {
+          role: 'Support Bowler',
+          description: 'Reliable bowling performance',
+          battingPosition: '9-11',
+          bowlingRole: 'Full quota bowler'
+        };
+      } else if (bowlingScore >= 4) {
+        return {
+          role: 'Part-Time Bowler',
+          description: 'Limited bowling contribution',
+          battingPosition: '10-11',
+          bowlingRole: 'Medium overs'
+        };
+      } else {
+        return {
+          role: 'Development Bowler',
+          description: 'Minimal bowling contribution, needs improvement',
+          battingPosition: '11',
+          bowlingRole: 'Limited overs'
+        };
+      }
     } else {
+      // Player with no participation in either department
       return {
-        role: 'Development Player',
-        description: 'Needs improvement in both batting and bowling',
-        battingPosition: '10-11',
-        bowlingRole: 'Limited overs'
+        role: 'Inactive Player',
+        description: 'No recent participation in batting or bowling',
+        battingPosition: 'N/A',
+        bowlingRole: 'N/A'
       };
     }
   };
