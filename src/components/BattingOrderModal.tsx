@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { post } from "@/utils/request";
-import { BattingOrderPlayer } from "../contexts/TeamConfigContext";
+import { BattingOrderPlayer, useTeamConfig } from "../contexts/TeamConfigContext";
 import { getConfigData } from "@/utils/JSONBlobUtils";
 
 interface BattingOrderModalProps {
@@ -19,12 +19,40 @@ const BattingOrderModal: React.FC<BattingOrderModalProps> = ({
   const [battingOrder, setBattingOrder] = useState<BattingOrderPlayer[]>([]);
   const [saving, setSaving] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const { teamConfig } = useTeamConfig();
 
   useEffect(() => {
     if (isOpen) {
-      setBattingOrder([...initialBattingOrder].sort((a, b) => a.battingOrder - b.battingOrder));
+      console.log("initialBattingOrder", initialBattingOrder);
+      // setBattingOrder([...initialBattingOrder].sort((a, b) => a.battingOrder - b.battingOrder));
+      setBattingOrder(getPlayersInCurrentBattingOrder(initialBattingOrder));
     }
   }, [isOpen, initialBattingOrder]);
+
+  const getPlayersInCurrentBattingOrder = (activePlayers: BattingOrderPlayer[]) => {
+    const currentBattingOrder: BattingOrderPlayer[] = teamConfig?.battingOrder || [];
+    
+    // Get IDs of active players for quick lookup
+    const activePlayerIds = new Set(activePlayers.map(p => p.playerId));
+    
+    // Get players in current batting order (sorted by batting order number)
+    // Only include players who are both in batting order AND active
+    const playersInBattingOrder = currentBattingOrder
+      .filter(player => activePlayerIds.has(player.playerId))
+      .sort((a, b) => a.battingOrder - b.battingOrder);
+    
+    // Get other active players (not in batting order)
+    const currentBattingOrderIds = new Set(playersInBattingOrder.map(p => p.playerId));
+    const otherActivePlayers = activePlayers
+      .filter(player => !currentBattingOrderIds.has(player.playerId))
+      .map(player => ({
+        ...player,
+        battingOrder: 0 // Will be assigned when added to batting order
+      }));
+    
+    // Combine: current batting order first, then other active players
+    return [...playersInBattingOrder, ...otherActivePlayers];
+  };
 
   const handleDragStart = (e: React.DragEvent, index: number) => {
     setDraggedIndex(index);
@@ -82,6 +110,8 @@ const BattingOrderModal: React.FC<BattingOrderModalProps> = ({
     }));
     setBattingOrder(updatedOrder);
   };
+
+
 
   const handleSave = async () => {
     try {

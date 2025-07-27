@@ -33,20 +33,29 @@ const TeamStatsTab: React.FC = () => {
     setShowBattingOrderModal(true);
   };
 
-  const handleBattingOrderUpdated = async () => {
+  const handleClearStats = async () => {
     try {
-      // Clear team stats data when batting order is updated
+      // Clear team stats data
       await post("/api/clear-team-stats", {});
-      console.log("Team statistics cleared after batting order update");
+      console.log("Team statistics cleared");
       
       // Refresh team stats from context
       await refreshTeamStats();
+      
+      // Show success alert
+      alert("Team statistics cleared successfully!");
+      
+      // Reload the page to refresh the team config
+      window.location.reload();
     } catch (err) {
       console.error("Failed to clear team stats:", err);
-      // Continue anyway since batting order was updated successfully
+      alert("Failed to clear team statistics");
     }
-    
-    // Reload the page to refresh the team config
+  };
+
+  const handleBattingOrderUpdated = async () => {
+    // Use the unified method
+    // await handleClearStats();
     window.location.reload();
   };
 
@@ -667,7 +676,7 @@ const TeamStatsTab: React.FC = () => {
     <div className="w-full max-w-4xl mx-auto space-y-6">
       {/* Reshuffle Button */}
       {canReshuffle && (
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-3">
           <button
             onClick={handleReshuffle}
             className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm"
@@ -675,6 +684,14 @@ const TeamStatsTab: React.FC = () => {
           >
             <span>🔄</span>
             Reshuffle Batting Order
+          </button>
+          <button
+            onClick={handleClearStats}
+            className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm"
+            title="Clear all team statistics"
+          >
+            <span>🗑️</span>
+            Clear Stats
           </button>
         </div>
       )}
