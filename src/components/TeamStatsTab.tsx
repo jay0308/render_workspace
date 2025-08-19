@@ -69,7 +69,7 @@ const TeamStatsTab: React.FC = () => {
 
     try {
       setIsGeneratingPDF(true);
-      await generateTeamStatsPDF(teamStats, teamConfig?.metadata?.teamName || 'CounterStrikers');
+      await generateTeamStatsPDF(teamStats, teamConfig?.metadata?.teamName || 'CounterStrikers', teamConfig);
       // Show success message
       setTimeout(() => {
         alert('PDF generated successfully! Check your downloads folder.');
