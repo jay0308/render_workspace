@@ -5,6 +5,7 @@ import { useTeamStats, AggregatedBattingStats, AggregatedBowlingStats, TeamStats
 import BattingOrderModal from "./BattingOrderModal";
 import PlayerAnalysisModal from "./PlayerAnalysisModal";
 import { aggregatePlayerStats } from "../utils/playerAnalysisUtils";
+import { generateTeamStatsPDF } from "./TeamStatsPDF";
 
 const TeamStatsTab: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'matches' | 'batting' | 'bowling'>('matches');
@@ -18,6 +19,7 @@ const TeamStatsTab: React.FC = () => {
   // Player Analysis Modal state
   const [showPlayerAnalysisModal, setShowPlayerAnalysisModal] = useState(false);
   const [selectedPlayerForAnalysis, setSelectedPlayerForAnalysis] = useState<any>(null);
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   
   const { teamConfig } = useTeamConfig();
   const { teamStats, isLoading: loading, error, fetchTeamStats, refreshTeamStats } = useTeamStats();
@@ -57,6 +59,27 @@ const TeamStatsTab: React.FC = () => {
     // Use the unified method
     // await handleClearStats();
     window.location.reload();
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!teamStats) {
+      alert('No team statistics available to generate PDF');
+      return;
+    }
+
+    try {
+      setIsGeneratingPDF(true);
+      await generateTeamStatsPDF(teamStats, teamConfig?.metadata?.teamName || 'CounterStrikers');
+      // Show success message
+      setTimeout(() => {
+        alert('PDF generated successfully! Check your downloads folder.');
+      }, 500);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
   };
 
   // Handle player analysis
@@ -674,27 +697,44 @@ const TeamStatsTab: React.FC = () => {
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
-      {/* Reshuffle Button */}
-      {canReshuffle && (
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={handleReshuffle}
-            className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm"
-            title="Update batting order"
-          >
-            <span>🔄</span>
-            Reshuffle Batting Order
-          </button>
-          <button
-            onClick={handleClearStats}
-            className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm"
-            title="Clear all team statistics"
-          >
-            <span>🗑️</span>
-            Clear Stats
-          </button>
-        </div>
-      )}
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">        
+        {/* Admin-only buttons */}
+        {canReshuffle && (
+          <>
+            {/* Share PDF Button - Always visible */}
+            <button
+              onClick={handleGeneratePDF}
+              disabled={isGeneratingPDF || !teamStats}
+              className={`font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm ${
+                isGeneratingPDF || !teamStats
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-blue-500 hover:bg-blue-600 text-white'
+              }`}
+              title={!teamStats ? 'No statistics available' : 'Generate and download team statistics PDF'}
+            >
+              <span>{isGeneratingPDF ? '⏳' : '📄'}</span>
+              {isGeneratingPDF ? 'Generating...' : 'Share PDF'}
+            </button>
+            <button
+              onClick={handleReshuffle}
+              className="bg-teal-500 hover:bg-teal-600 text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm"
+              title="Update batting order"
+            >
+              <span>🔄</span>
+              Reshuffle Batting Order
+            </button>
+            <button
+              onClick={handleClearStats}
+              className="bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded transition-colors flex items-center gap-2 shadow-sm"
+              title="Clear all team statistics"
+            >
+              <span>🗑️</span>
+              Clear Stats
+            </button>
+          </>
+        )}
+      </div>
 
       {/* Batting Order Modal */}
       {teamConfig && (
